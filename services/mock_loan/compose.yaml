@@ -1,0 +1,16 @@
+services:
+  mock-loan:
+    build: .
+    ports:
+      - "8005:8000"
+    environment:
+      LENDER_ID: loans
+      LENDER_NAME: Capital Insight Mock Loans
+      DATABASE_URL: sqlite:///./data/loans.db
+      DATA_SEED: "505"
+      DEMO_MODE: "true"
+    volumes:
+      - loan_data:/service/data
+    restart: unless-stopped
+volumes:
+  loan_data:
