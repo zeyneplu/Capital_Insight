@@ -1,0 +1,129 @@
+{
+  "_comment": "Synthetic demo people. Emails use example.com (reserved for examples). Each bank instance only loads the accounts listed under its own BANK_ID. Bill category 'transfer' = moving money between your own accounts (card payments): spending reports must skip it, or card purchases get counted twice.",
+  "customers": [
+    {
+      "email": "alex.rivera@example.com",
+      "full_name": "Alex Rivera",
+      "ssn_last4": "4821",
+      "accounts": {
+        "pecan": [
+          {
+            "type": "checking",
+            "nickname": "Everyday Checking",
+            "balance": "1700.00",
+            "annual_rate": "0",
+            "monthly_income": "3200.00",
+            "bills": [
+              {
+                "description": "Rent - Parkside Apartments",
+                "amount": "1100.00",
+                "day": 1,
+                "category": "housing"
+              },
+              {
+                "description": "Comet Card payment",
+                "amount": "450.00",
+                "day": 20,
+                "category": "transfer"
+              }
+            ]
+          },
+          {
+            "type": "savings",
+            "nickname": "High-Yield Savings",
+            "balance": "5000.00",
+            "annual_rate": "0.05"
+          }
+        ],
+        "comet": [
+          {
+            "type": "credit_card",
+            "nickname": "Comet Rewards Card",
+            "balance": "600.00",
+            "annual_rate": "0.18",
+            "credit_limit": "2500.00",
+            "monthly_spend": "450.00"
+          }
+        ]
+      }
+    },
+    {
+      "email": "jordan.lee@example.com",
+      "full_name": "Jordan Lee",
+      "ssn_last4": "1937",
+      "accounts": {
+        "pecan": [
+          {
+            "type": "checking",
+            "nickname": "Joint Checking",
+            "balance": "4200.00",
+            "annual_rate": "0",
+            "monthly_income": "6500.00",
+            "bills": [
+              {
+                "description": "Pecan Bank mortgage payment",
+                "amount": "1850.00",
+                "day": 5,
+                "category": "housing"
+              },
+              {
+                "description": "Comet auto loan payment",
+                "amount": "425.00",
+                "day": 5,
+                "category": "transport"
+              },
+              {
+                "description": "Comet Card payment",
+                "amount": "1400.00",
+                "day": 20,
+                "category": "transfer"
+              }
+            ]
+          },
+          {
+            "type": "savings",
+            "nickname": "House Fund",
+            "balance": "12000.00",
+            "annual_rate": "0.0425"
+          },
+          {
+            "type": "cd",
+            "nickname": "12-Month CD",
+            "balance": "10000.00",
+            "annual_rate": "0.046"
+          },
+          {
+            "type": "ira",
+            "nickname": "Roth IRA",
+            "balance": "23500.00",
+            "annual_rate": "0"
+          },
+          {
+            "type": "mortgage",
+            "nickname": "Home Mortgage",
+            "balance": "284000.00",
+            "annual_rate": "0.0625",
+            "monthly_payment": "1850.00"
+          }
+        ],
+        "comet": [
+          {
+            "type": "credit_card",
+            "nickname": "Comet Travel Card",
+            "balance": "3900.00",
+            "annual_rate": "0.2499",
+            "credit_limit": "6000.00",
+            "monthly_spend": "1400.00"
+          },
+          {
+            "type": "loan",
+            "nickname": "Auto Loan",
+            "balance": "14250.00",
+            "annual_rate": "0.069",
+            "monthly_payment": "425.00"
+          }
+        ]
+      }
+    }
+  ]
+}

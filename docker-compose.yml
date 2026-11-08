@@ -1,0 +1,64 @@
+# Whole system on one laptop:  docker compose up --build
+#
+#   core-api  :8000  <- the only service the frontend talks to
+#   bank-pecan:9001  \  same image, different env = two different "banks"
+#   bank-comet:9002  /  (call them only from core-api; :900x is exposed for /docs and the dev inbox)
+#   db        :5432  <- Postgres for core-api (users, linked banks, goals)
+#
+# Secrets come from backend/.env (git-ignored). Never put real keys in this file.
+
+x-bank: &bank
+  build: ./mock-bank
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+    interval: 5s
+    retries: 10
+
+services:
+  bank-pecan:
+    <<: *bank
+    environment:
+      BANK_ID: pecan
+      BANK_NAME: Pecan Bank (demo)
+      SEED: "42"
+    ports: ["9001:8000"]
+
+  bank-comet:
+    <<: *bank
+    environment:
+      BANK_ID: comet
+      BANK_NAME: Comet Card (demo)
+      SEED: "42"
+    ports: ["9002:8000"]
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: capital
+      POSTGRES_PASSWORD: capital-dev-only   # local only; never reuse anywhere real
+      POSTGRES_DB: capital_insight
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capital -d capital_insight"]
+      interval: 5s
+      retries: 10
+
+  core-api:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      # Inside Docker, services reach each other by service name, not localhost.
+      BANKS: >-
+        {"pecan": {"name": "Pecan Bank (demo)", "base_url": "http://bank-pecan:8000"},
+         "comet": {"name": "Comet Card (demo)", "base_url": "http://bank-comet:8000"}}
+      DATABASE_URL: postgresql+psycopg://capital:capital-dev-only@db:5432/capital_insight
+    ports: ["8000:8000"]
+    depends_on:
+      bank-pecan: {condition: service_healthy}
+      bank-comet: {condition: service_healthy}
+      db: {condition: service_healthy}
+
+volumes:
+  pgdata:
