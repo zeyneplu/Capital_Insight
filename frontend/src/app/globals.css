@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/*
+  Design tokens. Every color is used by role (ink, paper, accent...), so dark mode
+  swaps values here and nowhere else. Contrast was checked: all text tokens are
+  >= 4.5:1 on paper in both modes. Status colors only ever appear next to a text
+  label, never alone.
+*/
+:root {
+  --paper: #f3f6f2;
+  --surface: #ffffff;
+  --ink: #12362b;
+  --ink-2: #465c54;
+  --ink-3: #5a6d66;
+  --line: #d3ddd6;
+  --accent: #1d6b52;
+  --accent-soft: #dcebe3;
+
+  --status-good: #0ca30c;
+  --status-fair: #fab219;
+  --status-poor: #d03b3b;
+  --status-unknown: #7c8c86;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e1d18;
+    --surface: #14271f;
+    --ink: #e6efea;
+    --ink-2: #a8bcb3;
+    --ink-3: #8fa49b;
+    --line: #27423a;
+    --accent: #5bbf96;
+    --accent-soft: #1c3a30;
+    --status-unknown: #8a9a94;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--status-good);
+  --color-fair: var(--status-fair);
+  --color-poor: var(--status-poor);
+  --color-unknown: var(--status-unknown);
+  --font-sans: "Public Sans Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-feature-settings: "tnum" 1; /* digits line up in columns of money */
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

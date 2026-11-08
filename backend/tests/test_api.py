@@ -83,3 +83,5 @@ def test_cash_flow(client):
     # the $450 card payment is a transfer, so it is not counted as spending
     assert body["monthly_spending"] == "1489.79"
     assert client.get("/api/v1/customers/nobody/cash-flow").status_code == 404
+    # Default months=3, but the demo has 1 month of data: still the true monthly income.
+    assert client.get(f"{BASE}/cash-flow").json()["monthly_income"] == "3200.00"

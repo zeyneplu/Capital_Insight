@@ -34,7 +34,8 @@ Nemotron) that turns goals into plans. Three services plus a frontend:
 ```bash
 cd backend   && pytest -q && ruff check . && ruff format --check .
 cd mock-bank && pytest -q && ruff check . && ruff format --check .
-docker compose up --build        # everything at once
+cd frontend  && npm run lint && npm run typecheck && npm test && npm run build
+docker compose up --build        # backend services at once
 ```
 
 ## Recipes
@@ -48,11 +49,16 @@ docker compose up --build        # everything at once
   that calls an engine function, plus a test in `tests/test_agent.py`.
 
 ## Frontend rules
-- API types are generated, never hand-written:
-  `npx openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-types.ts`
-- All API calls go through one typed client in `src/lib/api.ts` (openapi-fetch).
-- Show money with `Intl.NumberFormat("en-US", {style: "currency", currency: "USD"})`.
-- Every data view has loading, empty, and error states.
+- This is Next.js 16: read `frontend/node_modules/next/dist/docs/` before using an
+  API you're unsure of (see `frontend/AGENTS.md`).
+- API types are generated, never hand-written: `npm run gen:api` (backend running).
+- All API calls go through `src/lib/api.ts` (openapi-fetch + `unwrap` for clear errors).
+  Reads are SWR hooks in `src/lib/queries.ts`, one per endpoint.
+- Money arrives as decimal strings. Format with `src/lib/format.ts`; never do money math
+  in the frontend.
+- Every data view has loading, empty, and error states (`src/components/states.tsx`).
+- Colors come from the tokens in `src/app/globals.css` (light + dark). Status colors
+  always come with an icon and a text label (`StatusMark`).
 
 ## Definition of done
 Tests and lint pass, you clicked through it once in the browser or `/docs`, and the

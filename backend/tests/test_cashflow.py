@@ -48,6 +48,16 @@ def test_averages_over_months_and_ignores_old_data():
     assert s.by_category[0].monthly_average == Decimal("300.00")
 
 
+def test_averages_only_over_months_the_data_covers():
+    # One month of history, but 3 months requested (the default).
+    txns = [tx("2026-10-01", "1600", "income"), tx("2026-10-15", "1600", "income"),
+            tx("2026-10-20", "-90", "groceries")]  # fmt: skip
+    s = summarize(txns, months=3)
+    assert s.months == 1
+    assert s.start == date(2026, 10, 1)
+    assert s.monthly_income == Decimal("3200.00")  # not 1066.67
+
+
 def test_empty_is_zero_not_an_error():
     s = summarize([], as_of=date(2026, 11, 7))
     assert s.monthly_income == s.monthly_spending == Decimal("0.00")

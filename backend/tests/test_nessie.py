@@ -84,7 +84,8 @@ async def test_profile_merges_accounts_loans_and_cash_flow():
     assert by_id["L1"].type is AccountType.MORTGAGE
     assert profile.credit_score == 712  # sandbox value from loans
     # Window is anchored to the latest transaction, so old sandbox data still works.
-    assert profile.monthly_income == Decimal("1066.67")  # 3200 / 3 months
+    # Two-week sample, so averaged over 1 month (not the default 3).
+    assert profile.monthly_income == Decimal("3200.00")
 
 
 async def test_transactions_are_signed_categorized_and_cleaned():

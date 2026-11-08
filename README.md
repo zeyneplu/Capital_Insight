@@ -64,8 +64,9 @@ Demo people (synthetic): `alex.rivera@example.com` / `4821`, `jordan.lee@example
 
 ## Tests
 ```bash
-cd backend && pytest -q      # 61 tests
+cd backend && pytest -q      # 62 tests
 cd mock-bank && pytest -q    # 21 tests
+cd frontend && npm test      # 6 tests (+ lint, typecheck, build in CI)
 ```
 
 ## Capital One (Nessie, read-only)
@@ -77,13 +78,10 @@ If it says ✅, set `DATA_SOURCE=nessie` in `backend/.env` and use the customer 
 
 ## Frontend
 ```bash
-npx create-next-app@latest frontend --ts --eslint --tailwind --app --src-dir \
-  --import-alias "@/*" --use-npm
-cd frontend && npx shadcn@latest init && npm install openapi-fetch recharts
-npm install -D openapi-typescript
-echo 'NEXT_PUBLIC_API_URL=http://localhost:8000' > .env.local
-npx openapi-typescript http://localhost:8000/openapi.json -o src/lib/api-types.ts
+cd frontend && npm install && cp .env.example .env.local
+npm run dev        # http://localhost:3000 (backend must be running on :8000)
 ```
+How screens get data, and the pattern for adding one: [frontend/README.md](frontend/README.md).
 
 ## Working on this repo
 Read [AGENTS.md](AGENTS.md) first. It holds the rules for us and for AI coding tools.

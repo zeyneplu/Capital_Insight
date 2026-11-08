@@ -4,6 +4,7 @@ The window ends at the *latest transaction*, not today, by default. Sandbox data
 often months old, and a window ending today would show $0 and look broken.
 """
 
+import math
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
@@ -25,9 +26,9 @@ class CategoryTotal(BaseModel):
 
 
 class CashFlowSummary(BaseModel):
-    start: date
+    start: date  # first transaction in the window
     end: date
-    months: int
+    months: int  # months actually averaged over (can be fewer than requested)
     monthly_income: Decimal
     monthly_spending: Decimal
     by_category: list[CategoryTotal]  # biggest first
@@ -39,13 +40,17 @@ def summarize(
     if months < 1:
         raise ValueError("months must be >= 1")
     end = as_of or max((t.posted_on for t in transactions), default=date.today())
-    start = end - timedelta(days=DAYS_PER_MONTH * months - 1)
+    window_start = end - timedelta(days=DAYS_PER_MONTH * months - 1)
+    in_window = [t for t in transactions if window_start <= t.posted_on <= end]
+
+    # Average over the months the data actually covers, not the months asked for:
+    # one month of history divided by 3 would show a third of the real income.
+    start = min((t.posted_on for t in in_window), default=end)
+    covered = max(1, min(months, math.ceil(((end - start).days + 1) / DAYS_PER_MONTH)))
 
     income = Decimal("0")
     by_category: dict[str, Decimal] = defaultdict(Decimal)
-    for t in transactions:
-        if not start <= t.posted_on <= end:
-            continue
+    for t in in_window:
         if t.category == "income" and t.amount > 0:
             income += t.amount
         elif t.amount < 0 and t.category not in NON_SPENDING:
@@ -53,7 +58,7 @@ def summarize(
 
     categories = sorted(
         (
-            CategoryTotal(category=c, monthly_average=to_cents(v / months))
+            CategoryTotal(category=c, monthly_average=to_cents(v / covered))
             for c, v in by_category.items()
         ),
         key=lambda c: c.monthly_average,
@@ -62,8 +67,8 @@ def summarize(
     return CashFlowSummary(
         start=start,
         end=end,
-        months=months,
-        monthly_income=to_cents(income / months),
-        monthly_spending=to_cents(sum(by_category.values(), Decimal("0")) / months),
+        months=covered,
+        monthly_income=to_cents(income / covered),
+        monthly_spending=to_cents(sum(by_category.values(), Decimal("0")) / covered),
         by_category=categories,
     )
