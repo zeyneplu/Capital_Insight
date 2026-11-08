@@ -1,0 +1,129 @@
+name: capital-insight
+
+services:
+  api:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: .env
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://capital:capital_demo@postgres:5432/capital_insight
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      MOCK_SERVICE_URLS: '{"chase":"http://chase:8000","amex":"http://amex:8000","pnc":"http://pnc:8000","discover":"http://discover:8000","loans":"http://loans:8000","mortgages":"http://mortgages:8000"}'
+    volumes:
+      - api_data:/service/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: capital
+      # Fixed credentials for this localhost-only demo stack.
+      POSTGRES_PASSWORD: capital_demo
+      POSTGRES_DB: capital_insight
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capital -d capital_insight"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  chase:
+    build: ../services/mock_bank
+    ports:
+      - "127.0.0.1:8001:8000"
+    environment:
+      BANK_ID: chase
+      BANK_NAME: Chase Mock Bank
+      DATABASE_URL: sqlite:///./data/chase.db
+      DATA_SEED: "101"
+      DEMO_MODE: "true"
+    volumes:
+      - chase_data:/service/data
+    restart: unless-stopped
+
+  amex:
+    build: ../services/mock_bank
+    ports:
+      - "127.0.0.1:8002:8000"
+    environment:
+      BANK_ID: amex
+      BANK_NAME: American Express Mock Bank
+      DATABASE_URL: sqlite:///./data/amex.db
+      DATA_SEED: "202"
+      DEMO_MODE: "true"
+    volumes:
+      - amex_data:/service/data
+    restart: unless-stopped
+
+  pnc:
+    build: ../services/mock_bank
+    ports:
+      - "127.0.0.1:8003:8000"
+    environment:
+      BANK_ID: pnc
+      BANK_NAME: PNC Mock Bank
+      DATABASE_URL: sqlite:///./data/pnc.db
+      DATA_SEED: "303"
+      DEMO_MODE: "true"
+    volumes:
+      - pnc_data:/service/data
+    restart: unless-stopped
+
+  discover:
+    build: ../services/mock_bank
+    ports:
+      - "127.0.0.1:8004:8000"
+    environment:
+      BANK_ID: discover
+      BANK_NAME: Discover Mock Bank
+      DATABASE_URL: sqlite:///./data/discover.db
+      DATA_SEED: "404"
+      DEMO_MODE: "true"
+    volumes:
+      - discover_data:/service/data
+    restart: unless-stopped
+
+  loans:
+    build: ../services/mock_loan
+    ports:
+      - "127.0.0.1:8005:8000"
+    environment:
+      LENDER_ID: loans
+      LENDER_NAME: Capital Insight Mock Loans
+      DATABASE_URL: sqlite:///./data/loans.db
+      DATA_SEED: "505"
+      DEMO_MODE: "true"
+    volumes:
+      - loan_data:/service/data
+    restart: unless-stopped
+
+  mortgages:
+    build: ../services/mock_mortgage
+    ports:
+      - "127.0.0.1:8006:8000"
+    environment:
+      LENDER_ID: mortgages
+      LENDER_NAME: Capital Insight Mock Mortgages
+      DATABASE_URL: sqlite:///./data/mortgages.db
+      DATA_SEED: "606"
+      DEMO_MODE: "true"
+    volumes:
+      - mortgage_data:/service/data
+    restart: unless-stopped
+
+volumes:
+  api_data:
+  postgres_data:
+  chase_data:
+  amex_data:
+  pnc_data:
+  discover_data:
+  loan_data:
+  mortgage_data:

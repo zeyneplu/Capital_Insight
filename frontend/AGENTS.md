@@ -13,4 +13,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Read [the repository contributor guide](../AGENTS.md) before implementing the UI. It describes the product, current service contracts, suggested screens, fixture-first development, financial data conventions, and the future main-backend integration boundary.
 
-The main backend is not implemented yet. Build a usable frontend with deterministic local fixtures behind a typed data-provider interface; do not require running Python services. Preserve the generated Next.js guidance above and follow the installed version's docs.
+The main backend is now implemented in `backend/` with Swagger at port 8000 by default; see `backend/Readme.md` for setup, authentication, aggregation, and Plaid. Keep deterministic local fixtures behind a typed data-provider interface so frontend development can continue without running Python services. Preserve the generated Next.js guidance above and follow the installed version's docs.
