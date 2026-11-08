@@ -1,5 +1,6 @@
 """Optional SMTP delivery for synthetic-customer consent codes."""
 from email.message import EmailMessage
+import logging
 import re
 import smtplib
 import ssl
@@ -12,6 +13,8 @@ from pydantic_settings import BaseSettings
 # Local services share the repository's ignored .env.mail file.
 REPO_ROOT = next((p for p in Path(__file__).resolve().parents if (p / "services" / "mock_bank").is_dir()), Path.cwd())
 MAIL_ENV_FILE = REPO_ROOT / ".env.mail"
+# Same logger the mock services use, so uvicorn prints it like their consent codes.
+logger = logging.getLogger("uvicorn.error")
 
 
 class MailSettings(BaseSettings):
@@ -45,7 +48,18 @@ class MailDeliveryError(Exception):
     """Deliberately omits provider errors, credentials, codes and recipients."""
 
 
+def log_delivery_enabled(settings: MailSettings) -> bool:
+    """Log delivery is a local-development convenience and never runs in production.
+
+    Settings without an ``environment`` field are treated as production (fail closed).
+    """
+    return (settings.auth_code_delivery == "log"
+            and getattr(settings, "environment", "production") != "production")
+
+
 def validate_mail_configuration(settings: MailSettings) -> None:
+    if log_delivery_enabled(settings):
+        return
     if settings.auth_code_delivery != "smtp" or not all([
         settings.smtp_host, settings.smtp_username, settings.smtp_password, settings.smtp_from,
     ]):
@@ -54,6 +68,9 @@ def validate_mail_configuration(settings: MailSettings) -> None:
 
 def send_user_code(settings: MailSettings, email: str, code: str, ttl_seconds: int) -> None:
     validate_mail_configuration(settings)
+    if log_delivery_enabled(settings):
+        logger.warning("DEVELOPMENT ONLY Capital Insight sign-in code for %s: %s", email, code)
+        return
     message = EmailMessage()
     message["Subject"] = f"{code} - Capital Insight sign-in"
     message["From"] = settings.smtp_from

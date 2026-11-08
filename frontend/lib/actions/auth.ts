@@ -19,7 +19,10 @@ export async function signInAction(previous: SignInState, form: FormData): Promi
     if (intent === "request") {
       const response = await coreRequest("/v1/auth/request-email-code", {method:"POST",body:{email}});
       if (!response.ok) return {step:previous.step,email,error:await errorMessage(response)};
-      return {step:"code",email,message:"Check your inbox for your Capital Insight sign-in code."};
+      const sent = await response.json().catch(() => ({})) as {delivery?: string};
+      return {step:"code",email,message:sent.delivery === "server_log"
+        ? "Development mode: no email was sent. Copy the DEVELOPMENT ONLY sign-in code from the core API terminal."
+        : "Check your inbox for your Capital Insight sign-in code."};
     }
     if (intent !== "verify") return {...previous,error:"Choose an action."};
     const code = read(form,"code",6);

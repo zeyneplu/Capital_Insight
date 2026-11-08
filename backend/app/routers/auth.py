@@ -16,7 +16,7 @@ from ..database import utcnow
 from ..dependencies import SessionDep, UserDep
 from ..models import SessionToken, User, EmailChallenge
 from ..security import hash_password, hash_token, verify_password
-from ..mailer import MailDeliveryError, validate_mail_configuration, send_user_code
+from ..mailer import MailDeliveryError, log_delivery_enabled, validate_mail_configuration, send_user_code
 
 
 router = APIRouter(prefix="/v1/auth", tags=["Application authentication"])
@@ -129,7 +129,7 @@ def request_email_code(body: EmailCodeRequest, request: Request, session: Sessio
     try:
         validate_mail_configuration(settings)
     except MailDeliveryError:
-        raise HTTPException(503, "Email sign-in requires SMTP credentials in .env.mail") from None
+        raise HTTPException(503, "Email sign-in requires AUTH_CODE_DELIVERY=smtp with SMTP credentials in .env.mail (log delivery is development-only)") from None
     lock_email_challenge(session)
     prior = session.scalar(select(EmailChallenge).where(EmailChallenge.email == body.email).with_for_update())
     now = utcnow()
@@ -153,6 +153,8 @@ def request_email_code(body: EmailCodeRequest, request: Request, session: Sessio
     except IntegrityError:
         session.rollback()
         raise HTTPException(429, "A code was requested concurrently; wait before retrying") from None
+    if log_delivery_enabled(settings):
+        return {"message":"Development mode: the sign-in code was printed in the core API server log.", "delivery":"server_log"}
     return {"message":"A sign-in code was sent to your email.", "delivery":"email"}
 
 

@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LOGS = ROOT / "logs"
-CODE = re.compile(r"DEVELOPMENT ONLY mock consent code for (\S+): (\d{6})")
+CODE = re.compile(r"DEVELOPMENT ONLY (?:mock consent|Capital Insight sign-in) code for (\S+): (\d{6})")
 
 BANKS = [  # id, display name, port, seed (matches services/mock_bank/compose.yaml)
     ("chase", "Chase Mock Bank", 8001, 101),
