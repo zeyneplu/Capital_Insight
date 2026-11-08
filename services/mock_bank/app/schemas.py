@@ -22,6 +22,9 @@ class CustomerOut(ORMModel):
 
 
 class BalanceOut(ORMModel):
+    model_config = ConfigDict(from_attributes=True, json_schema_extra={"examples": [{
+        "id": "chase-customer-001-checking", "currency": "USD", "balance": "8000.00",
+        "updated_at": "2026-11-01T00:00:00Z"}]})
     id: str
     currency: str
     balance: Decimal
@@ -29,6 +32,16 @@ class BalanceOut(ORMModel):
 
 
 class AccountOut(BalanceOut):
+    model_config = ConfigDict(from_attributes=True, json_schema_extra={"examples": [{
+        "id": "amex-customer-001-credit_card", "customer_id": "amex-customer-001",
+        "institution_id": "amex", "account_type": "credit_card", "account_name": "Mock Credit Card",
+        "account_number_last4": "1234", "currency": "USD", "opening_balance": "1000.00",
+        "balance": "600.00", "credit_limit": "5000.00", "purchase_apr": "0.1800",
+        "minimum_payment": "25.00", "payment_due_date": "2026-11-21",
+        "created_at": "2026-08-03T00:00:00Z", "updated_at": "2026-11-01T00:00:00Z",
+        "apy": None, "original_principal": None, "outstanding_principal": None,
+        "apr": None, "monthly_payment": None, "term_months": None, "maturity_date": None,
+        "account_value": None, "account_subtype": None}]})
     customer_id: str
     institution_id: str
     account_type: AccountType

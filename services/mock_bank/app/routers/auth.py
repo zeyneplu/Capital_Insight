@@ -3,7 +3,7 @@ import logging
 import secrets
 from datetime import timedelta
 from fastapi import APIRouter, Request, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import select
 from ..database import utcnow
 from ..dependencies import SessionDep
 from ..models import Customer, Verification

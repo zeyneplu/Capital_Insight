@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from sqlalchemy import text
 from ..dependencies import SessionDep
 from ..schemas import HealthOut, InstitutionOut
