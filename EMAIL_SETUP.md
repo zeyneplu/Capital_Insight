@@ -53,6 +53,10 @@ The alternate ports avoid the other project on this machine. On a free machine, 
 4. The app signs in or creates the unique user for that email and takes you to Connections.
 5. Choose Plaid for a bank authorization, or a clearly labeled mock institution for fictional demo data.
 
+### Local testing without SMTP (`AUTH_CODE_DELIVERY=log`, the default)
+
+With no `.env.mail` (or `AUTH_CODE_DELIVERY=log`) and `ENVIRONMENT` not set to `production`, the core API sends no email. It logs `DEVELOPMENT ONLY Capital Insight sign-in code for <email>: <code>` at WARNING level, `scripts/dev.py` highlights it on the console like mock consent codes, and the sign-in page says to copy the code from the terminal. With `ENVIRONMENT=production`, log delivery is refused (503) and codes are never logged; production must use `smtp`.
+
 Application endpoints:
 
 - POST `/v1/auth/request-email-code` with `{ "email": "you@example.com" }`.
