@@ -1,6 +1,6 @@
 # Capital Insight - contributor and agent guide
 
-This file applies across the repository. Read `frontend/AGENTS.md` too when working on the frontend. This is the handoff for building the Next.js experience and integrating the main API. Keep the frontend usable with fixtures while services are unavailable.
+This file applies across the repository. Read `frontend/AGENTS.md` too when working on the frontend. This is the handoff for the Next.js frontend and the merged core backend.
 
 ## Product and current state
 
@@ -8,19 +8,19 @@ Capital Insight is a HackUTD 2026 financial wellness application. The intended e
 
 What exists today:
 
-- `frontend/`: initialized Next.js App Router starter, TypeScript, React, Tailwind CSS, and ESLint. It is not yet the Capital Insight UI.
-- `backend/`: implemented core FastAPI API on port 8000, with application login, encrypted institution connections, aggregation, Plaid Sandbox linking and transaction sync. Local setup uses SQLite; the full Docker stack uses PostgreSQL. AI integration is not implemented.
+- `backend/`: core API (FastAPI) with sessions, server-side token custody, and aggregation over the mock services (see `backend/Readme.md`). The frontend uses anonymous /api/v1 sessions; /v1 also supplies application login, PostgreSQL-capable storage, and Plaid. AI integration remains future work.
+- `frontend/`: the Capital Insight UI (see `frontend/Readme.md`). Fixtures by default; `DATA_SOURCE=http` uses the core API.
 - `services/mock_bank/`: working synthetic banking API; one configurable instance per bank.
 - `services/mock_loan/`: independent synthetic loan API.
 - `services/mock_mortgage/`: independent synthetic mortgage API. Use this spelling.
 
-The intended stack is Next.js for the frontend, Python/FastAPI for the main backend, PostgreSQL for the main application, SQLite inside the mock services, and NVIDIA Nemotron for future analysis. The main backend and mock services implement API behavior; the AI layer remains future work.
+The intended stack is Next.js for the frontend, Python/FastAPI for the main backend, PostgreSQL for the main application, SQLite inside the mock services, and NVIDIA Nemotron for future analysis. The main backend and the mock services implement API behavior.
 
 ## Frontend task boundaries
 
-Build the frontend now using deterministic local fixtures. It must work when no Python services or main backend are running. Integrate the main API through a replaceable data layer when ready; preserve fixture mode for development.
+Build the frontend now using deterministic local fixtures. It must work when no Python services or main backend are running. Connect real services through a replaceable data layer later.
 
-Work in `frontend/`. Preserve the mock services and their API contracts. Do not implement the main backend, PostgreSQL schema, or AI integration as part of routine frontend work. Small Next.js Route Handlers may serve fixture responses or proxy core API calls when needed. The Python backend is the main banking aggregator.
+Work in `frontend/`. Preserve the mock services and their API contracts. Do not implement the main backend, PostgreSQL schema, or AI integration as part of routine frontend work. Small Next.js Route Handlers may serve fixture responses or proxy approved upstream calls when needed; they are not the main banking aggregator.
 
 Do not run create-next-app again: the app already exists. Preserve the npm lockfile and the generated instruction block in `frontend/AGENTS.md`.
 
@@ -87,11 +87,11 @@ Proposed configuration, to implement and document when adding the provider:
 ```dotenv
 # frontend/.env.local - do not commit
 DATA_SOURCE=mock
-# Use for the implemented core API:
-BACKEND_API_URL=http://localhost:8000
+# Set only when the main FastAPI backend exists:
+# BACKEND_API_URL=http://localhost:8000
 ```
 
-These variables are a frontend convention to implement, not existing frontend behavior. The core API itself now exists. Default to fixtures without requiring an .env.local file. DATA_SOURCE should be selected on the server; do not import server-only configuration into Client Components. Keep BACKEND_API_URL and service tokens server-side. Do not prefix secrets with NEXT_PUBLIC_. Add a sanitized .env.example if useful and explicitly allow it in frontend/.gitignore if that template ignores all .env files.
+These variables are a convention to implement, not existing app behavior. Default to fixtures without requiring an .env.local file. DATA_SOURCE should be selected on the server; do not import server-only configuration into Client Components. Keep BACKEND_API_URL and service tokens server-side. Do not prefix secrets with NEXT_PUBLIC_. Add a sanitized .env.example if useful and explicitly allow it in frontend/.gitignore if that template ignores all .env files.
 
 Use Server Components for layouts and data reads where appropriate; use small Client Components for filters, dialogs, forms, and other interactions. Do not mark the entire app as client-only by default. Follow the installed Next.js docs for dynamic route params, cookies, caching, and other version-sensitive APIs.
 
@@ -117,7 +117,7 @@ Approved application records expose original financed amount and a projected sch
 
 ## Existing service contracts (optional live integration)
 
-Read each service README and `app/schemas.py` before integrating. Running services expose `/docs`, `/redoc`, and `/openapi.json`; their OpenAPI contracts are authoritative. The implemented core API contract is at http://localhost:8000/docs and documented in backend/Readme.md. The service routes below are upstream contracts; the frontend should normally use the core API rather than connect directly to each provider.
+Read each service README and `app/schemas.py` before integrating. Running services expose `/docs`, `/redoc`, and `/openapi.json`; their OpenAPI contracts are authoritative. The main backend has no contract yet, so keep any proposed aggregator routes clearly marked as proposals.
 
 | Service | Default local port | Demo email |
 | --- | --- | --- |
@@ -168,25 +168,11 @@ Mortgage routes:
 
 Handle 401 (reauthorize), 404 (unavailable/not owned), 409 (declined application has no schedule), 422 (field/range validation), and 429 (cooldown). FastAPI errors use a detail field; validation detail may be an array. A successfully submitted but declined application still returns 201; inspect status rather than treating every 201 as approval.
 
-Do not assume direct browser requests to these services will work: the current APIs do not configure browser CORS. For optional integration, use fixed, server-side upstream URLs through an appropriate Next.js adapter/Route Handler, or call the implemented main backend. Keep tokens per session on the server; do not commit them or put them in public variables/localStorage. In live mode, validate authorization at every boundary and avoid shared caching of customer-specific responses.
+Do not assume direct browser requests to these services will work: the current APIs do not configure browser CORS. For optional integration, use fixed, server-side upstream URLs through an appropriate Next.js adapter/Route Handler, or wait for the main backend. Keep tokens per session on the server; do not commit them or put them in public variables/localStorage. In live mode, validate authorization at every boundary and avoid shared caching of customer-specific responses.
 
-## Core backend and future AI handoff
+## Future backend and AI handoff
 
-The implemented flow is browser/Next.js adapter -> core API -> linked mock institutions or Plaid. Keep the frontend data interface so the HTTP adapter can replace fixtures without changing page layouts.
-
-Core API quick reference (all private routes use the application bearer token):
-
-- POST `/v1/auth/register` and `/v1/auth/login` with email/password; GET `/v1/auth/me`; POST `/v1/auth/logout`.
-- GET `/v1/providers`; GET `/v1/connections`.
-- POST `/v1/connections/{provider}/request-code` and `/verify-code` to link a mock provider. Verification returns connection metadata; upstream tokens stay encrypted in the backend.
-- GET `/v1/accounts`, `/v1/loans`, and `/v1/mortgages` return `{ items, errors, complete }`. Display partial-provider errors rather than treating a partial response as complete.
-- Account IDs returned by the core API are `connection_id:source_account_id`; use them as returned when calling `/v1/accounts/{id}/transactions`.
-- GET `/v1/dashboard` returns per-currency assets/liabilities/net_balance for known bank/Plaid snapshots plus coverage information. Loan and mortgage application projections are excluded, and duplicate real accounts across providers are not automatically reconciled.
-- Lending forms use `/v1/connections/{connection_id}/offers`, `/applications`, and `/records/{source_record_id}/schedule`.
-- Plaid frontend Link flow: POST `/v1/plaid/link-token`, initialize Link with the returned link_token, then POST Link's public_token to `/v1/plaid/exchange-public-token`. Keep the Plaid access token entirely on the backend. API-only Sandbox setup is also available; see backend/Readme.md.
-- POST `/v1/plaid/connections/{connection_id}/sync`, then GET its `/transactions` route. Plaid transaction cache and cursor persist in the backend.
-
-Backend setup: `python backend/scripts/setup_env.py`, then install backend/requirements.txt and run Uvicorn from backend/. Add Plaid credentials only to ignored backend/.env. Mock integration works without Plaid keys; unconfigured Plaid routes return 503. See backend/Readme.md for PowerShell and Docker commands.
+The intended final flow is browser -> Capital Insight main backend -> mock institutions, with the main backend importing/normalizing records and returning aggregated data. The frontend should depend on its data interface, so that this future integration replaces the adapter rather than page layouts.
 
 Insights and planning views should use clearly labeled sample output until Nemotron is connected by the backend. Do not send browser requests directly to an AI provider or invent a working AI endpoint. Any new proposed backend response shape should be recorded next to the frontend types and agreed with the backend developer.
 
@@ -206,6 +192,10 @@ Do not add a testing framework solely for cosmetic changes. Add focused tests wh
 ## Useful references
 
 - `frontend/AGENTS.md` and installed `frontend/node_modules/next/dist/docs/` for this Next.js version.
-- `backend/Readme.md` and `backend/.env.example` for core API and Plaid setup.
 - `services/mock_bank/README.md`, `services/mock_loan/README.md`, and `services/mock_mortgage/README.md` for setup and contracts.
 - Official Next.js docs: https://nextjs.org/docs/app/getting-started/server-and-client-components and https://nextjs.org/docs/app/guides/environment-variables. Prefer the installed docs when version differences arise.
+
+
+## Merged backend interfaces
+
+The frontend's existing `/api/v1` routes and X-Session-Id authentication take priority for frontend integration. They remain compatible with the incoming http-provider and development launcher. The `/v1` application bearer-token routes independently preserve persistent users, encrypted connections, and Plaid support from the core API commit. Both interfaces run in the same app; their sessions and linked connections are separate. See backend/Readme.md for frontend-session setup and backend/CORE_API.md for persistent auth/Plaid. Do not substitute one interface's tokens or response shapes for the other.

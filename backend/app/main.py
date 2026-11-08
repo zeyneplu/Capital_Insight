@@ -7,9 +7,19 @@ from .config import Settings
 from .database import Base, make_database
 from .security import make_cipher
 from .routers import auth, connections, portfolio, plaid
+from .institutions import build_registry
+from .sessions import SessionStore
+from .routes import banking as frontend_banking, connections as frontend_connections, lending as frontend_lending
 
 
-def create_app(settings: Settings | None = None, http_client: httpx.AsyncClient | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None,
+               transport: httpx.AsyncBaseTransport | httpx.AsyncClient | None = None,
+               http_client: httpx.AsyncClient | None = None) -> FastAPI:
+    # Accept both commits' test-injection interfaces without changing callers.
+    if isinstance(transport, httpx.AsyncClient):
+        if http_client is not None:
+            raise ValueError("Provide one HTTP client")
+        http_client, transport = transport, None
     settings = settings or Settings()
 
     @asynccontextmanager
@@ -19,7 +29,8 @@ def create_app(settings: Settings | None = None, http_client: httpx.AsyncClient 
         application.state.session_factory = factory
         application.state.settings = settings
         application.state.cipher = make_cipher(settings)
-        application.state.http_client = http_client or httpx.AsyncClient(timeout=settings.request_timeout_seconds, follow_redirects=False)
+        application.state.http_client = http_client or httpx.AsyncClient(timeout=settings.request_timeout_seconds, follow_redirects=False, transport=transport)
+        application.state.http = application.state.http_client
         try:
             Base.metadata.create_all(engine)
             yield
@@ -32,9 +43,11 @@ def create_app(settings: Settings | None = None, http_client: httpx.AsyncClient 
         description="User-owned connections, mock financial service aggregation, and Plaid Sandbox integration. Register/login, authorize Swagger with the application token, then link individual providers. Upstream access tokens remain encrypted server-side.",
         lifespan=lifespan)
     application.state.settings = settings
+    application.state.registry = build_registry(settings)
+    application.state.sessions = SessionStore(settings.session_ttl_seconds, settings.max_sessions)
     application.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
         allow_credentials=False, allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"])
+        allow_headers=["Authorization", "Content-Type", "X-Session-Id"])
 
     @application.get("/health", tags=["Health"], summary="Check core API and application database")
     def health(request: Request):
@@ -42,7 +55,8 @@ def create_app(settings: Settings | None = None, http_client: httpx.AsyncClient 
             connection.execute(text("SELECT 1"))
         return {"status": "ok", "service": "capital_insight", "plaid_configured": bool(settings.plaid_client_id and settings.plaid_secret)}
 
-    for router in (auth.router, connections.router, portfolio.router, plaid.router):
+    for router in (frontend_connections.router, frontend_banking.router, frontend_lending.router,
+                   auth.router, connections.router, portfolio.router, plaid.router):
         application.include_router(router)
     return application
 

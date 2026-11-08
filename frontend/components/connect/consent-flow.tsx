@@ -112,7 +112,12 @@ export function ConsentFlow({
                 Use the fixture-only code <strong className="font-mono tracking-widest">{demoCode}</strong>. It never works against the live mock services,
                 which generate a random code and print it only in their own server logs.
               </Alert>
-            ) : null}
+            ) : (
+              <Alert tone="info" title="Where is the code?">
+                Live mock services never email it. Run the service with <code className="font-mono">DEMO_MODE=true</code> and copy the six-digit
+                DEVELOPMENT ONLY code from that service&apos;s server log.
+              </Alert>
+            )}
             <Field id="consent-code" label="Verification code" hint="Codes expire after 5 minutes and allow 5 attempts.">
               {(describedBy) => (
                 <Input

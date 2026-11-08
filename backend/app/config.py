@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/capital_insight.db"
     encryption_key: SecretStr | None = None
     environment: Literal["development", "production"] = "development"
-    session_ttl_seconds: int = Field(default=86400, ge=1)
+    session_ttl_seconds: int = Field(default=3600, ge=1)
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     request_timeout_seconds: float = Field(default=15, gt=0, le=120)
     mock_service_urls: dict[str, str] = Field(
@@ -39,6 +39,28 @@ class Settings(BaseSettings):
     plaid_products: list[str] = Field(default_factory=lambda: ["transactions"])
     plaid_country_codes: list[str] = Field(default_factory=lambda: ["US"])
     plaid_redirect_uri: str | None = None
+
+    # Keep the incoming frontend adapter's settings alongside the core API.
+    chase_url: str = "http://localhost:8001"
+    amex_url: str = "http://localhost:8002"
+    pnc_url: str = "http://localhost:8003"
+    discover_url: str = "http://localhost:8004"
+    loans_url: str = "http://localhost:8005"
+    mortgages_url: str = "http://localhost:8006"
+    max_sessions: int = Field(default=10000, ge=1)
+    upstream_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
+
+    @model_validator(mode="after")
+    def synchronize_upstream_urls(self):
+        urls = dict(self.mock_service_urls)
+        for provider in ("chase", "amex", "pnc", "discover", "loans", "mortgages"):
+            field = f"{provider}_url"
+            if field in self.model_fields_set:
+                urls[provider] = getattr(self, field)
+            elif provider in urls:
+                setattr(self, field, urls[provider])
+        self.mock_service_urls = self.fixed_upstream_urls(urls)
+        return self
 
     @field_validator("encryption_key", "plaid_client_id", "plaid_secret", mode="before")
     @classmethod

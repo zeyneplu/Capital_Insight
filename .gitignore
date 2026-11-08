@@ -206,3 +206,5 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+# scripts/dev.py output
+logs/
