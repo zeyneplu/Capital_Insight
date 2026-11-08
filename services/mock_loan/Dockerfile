@@ -3,7 +3,7 @@ WORKDIR /service
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
-RUN useradd --create-home lender && mkdir /service/data && chown lender:lender /service/data
+RUN useradd --create-home --uid 1000 lender && mkdir /service/data && chown lender:lender /service/data
 USER lender
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"

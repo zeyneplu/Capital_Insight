@@ -134,7 +134,7 @@ export default function AccountsPage({ searchParams }: PageProps<"/accounts">) {
     <>
       <PageHeader
         title="Accounts"
-        description="Every account from your connected banks, grouped by institution."
+        description="Every account from your connected banks. Open a mock account to simulate deposits, purchases, transfers and payments."
         actions={<ButtonLink href="/connect" variant="secondary">Connect more</ButtonLink>}
       />
       <Suspense fallback={<AccountsSkeleton />}>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { randomUUID } from "node:crypto";
+import { TransactionForm } from "@/components/accounts/transaction-form";
+import { dataSourceKind } from "@/lib/data";
 import { utilizationOf } from "@/components/accounts/account-card";
 import { TransactionFilters, TransactionList, type FilterValues } from "@/components/accounts/transactions";
 import { Money } from "@/components/ui/money";
@@ -83,6 +86,8 @@ async function AccountDetail({ params, searchParams }: { params: Promise<{ accou
   const account = await provider.getAccount(accountId);
   // Missing and not-owned accounts look the same, as with the service's 404.
   if (!account) notFound();
+  const canPost = dataSourceKind() === "http" && account.source.service === "mock_bank";
+  const fundingAccounts = canPost ? (await provider.listAccounts()).filter(other=>other.id!==account.id && other.institution.id===account.institution.id && other.currency===account.currency && ["checking","savings"].includes(other.type)) : [];
 
   const filters = parseFilters(query);
   const page = filters.errors.length
@@ -112,6 +117,7 @@ async function AccountDetail({ params, searchParams }: { params: Promise<{ accou
       </header>
 
       <AccountSummary account={account} />
+      {canPost ? <TransactionForm account={account} others={fundingAccounts} requestId={randomUUID()}/> : null}
 
       <Card
         title="Transactions"

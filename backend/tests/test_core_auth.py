@@ -123,7 +123,8 @@ def test_connection_ownership_and_secret_storage(client, auth_headers, other_hea
 
 
 def test_production_requires_explicit_encryption_key():
-    settings = Settings(_env_file=None, environment="production", encryption_key=None)
+    settings = Settings(_env_file=None, environment="production", encryption_key=None,
+                        database_url="postgresql://capital:secret@db.example.test/capital_insight")
     with pytest.raises(ValueError, match="ENCRYPTION_KEY is required"):
         make_cipher(settings)
 

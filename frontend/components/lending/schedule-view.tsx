@@ -130,7 +130,7 @@ export function ScheduleView({
             application.kind === "mortgage" ? { label: "Loan-to-value", value: formatRate(application.loanToValue) } : null,
             { label: "Reported annual income", value: formatMoney(application.applicant.annualIncome) },
             { label: "Existing monthly debt", value: formatMoney(application.applicant.existingMonthlyDebt) },
-            { label: "Credit score (self-reported)", value: String(application.applicant.creditScore) },
+            { label: "Credit score at application (self-reported)", value: String(application.applicant.creditScore) },
             { label: "Decision", value: application.decisionReason },
           ]}
         />

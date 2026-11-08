@@ -1,0 +1,16 @@
+# One-shot maintenance image (repository-root build context), used by `docker compose run --rm seed`.
+# It mounts the mock institutions' SQLite volumes at their repository paths and talks to the core API.
+FROM python:3.12-slim
+WORKDIR /repo
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+COPY backend/requirements.txt backend/requirements.txt
+COPY services/mock_bank/requirements.txt services/mock_bank/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt -r services/mock_bank/requirements.txt
+RUN mkdir -p backend/certs && python -c "import urllib.request; urllib.request.urlretrieve('https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem', 'backend/certs/global-bundle.pem')"
+COPY backend/app backend/app
+COPY services services
+COPY scripts scripts
+# Same UID as the mock service users, so SQLite files stay writable by those services.
+RUN useradd --create-home --uid 1000 tools && chown -R tools:tools /repo
+USER tools
+CMD ["python", "scripts/seed_tester.py", "--api", "http://api:8000"]

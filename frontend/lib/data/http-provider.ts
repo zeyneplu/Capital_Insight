@@ -22,6 +22,7 @@ import type {
   RawTransactionPage,
   ScheduleResult,
   ServiceKind,
+  CreditScoreSummary,
 } from "@/lib/types";
 import { LOAN_TYPES } from "@/lib/types";
 import { INSTITUTIONS } from "./fixtures/institutions";
@@ -250,6 +251,12 @@ async function submit<T extends LoanApplication | MortgageApplication>(lenderId:
 export const httpProvider: DataProvider = {
   kind: "http",
 
+  async getCreditScore() {
+    const token = await authToken();
+    if (!token) return {score:null,minimum:300,maximum:850,model:"Synthetic demo score v1",synthetic:true,as_of:null,sources:[],status:"connect_bank"};
+    return expect<CreditScoreSummary>(await request("/v1/credit-score", {token}), 200);
+  },
+
   async getDashboard() {
     const { accounts, context } = await loadAccounts();
     const transactions = context.sessionId && accounts.length
@@ -300,7 +307,7 @@ export const httpProvider: DataProvider = {
     const response = await request(`/api/v1/institutions/${encodeURIComponent(institutionId)}/request-code`, { method: "POST", body: { email }, sessionId });
     if (response.status === 202) {
       const result = response.body as { message?: string; delivery?: string };
-      return { ok: true, message: String(result?.message ?? "Code requested."), delivery: result.delivery === "email" ? "email" : "server_log" };
+      return { ok: true, message: String(result?.message ?? "Code requested."), delivery: result.delivery === "email" || result.delivery === "tester" ? result.delivery : "server_log" };
     }
     if (response.status === 404 || response.status === 422 || response.status === 429 || response.status === 503) {
       const retry = Number(response.headers.get("Retry-After"));
@@ -367,6 +374,15 @@ export const httpProvider: DataProvider = {
 
   async listLoanOffers() {
     return expect<RawLoanOffer[]>(await request("/api/v1/lenders/loans/offers"), 200).map(normalizeLoanOffer);
+  },
+
+  async postTransaction(accountId, input) {
+    const sessionId = await ensureSessionId();
+    const response = await request(`/api/v1/accounts/${encodeURIComponent(accountId)}/transactions`, {method:"POST",sessionId,body:input});
+    if (response.status === 201) return {ok:true,replayed:(response.body as {replayed:boolean}).replayed};
+    if ([401,404,409,422,503].includes(response.status)) return {ok:false,message:detailOf(response.body).message};
+    expect(response,201);
+    throw new Error("unreachable");
   },
   async listLoanApplications() {
     return (await lenderApplications("loans")) as Gated<LoanApplication[]>;

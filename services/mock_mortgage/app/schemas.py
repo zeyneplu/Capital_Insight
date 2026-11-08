@@ -14,6 +14,8 @@ class CustomerOut(ORMModel):
     email: str
     date_of_birth: date
     synthetic_identity_id: str
+    credit_score: int = Field(ge=300, le=850)
+    credit_score_as_of: date
     created_at: datetime
 
 
@@ -36,7 +38,7 @@ class VerifyRequest(EmailRequest):
 
 class Message(BaseModel):
     message: str
-    delivery: Literal["email", "server_log"] = "server_log"
+    delivery: Literal["email", "server_log", "tester"] = "server_log"
 
 
 class TokenOut(BaseModel):

@@ -216,3 +216,27 @@ The Connections page supports Plaid Link; `/banks` shows Plaid accounts for the 
 Frontend `/api/v1` requests send the app bearer as well as the adapter session cookie. The backend recovers adapter sessions from persistent user connections when its in-memory state is lost, returns the current adapter ID in `X-Session-Id`, and validates the app session before restoring any links. Do not show all providers as disconnected solely because an adapter cookie is stale. Expired institution consents still require reconnection.
 
 HTTP account and overview pages combine mock accounts with Plaid snapshots. `plaid-normalize.ts` rounds Plaid amounts to cents using exact integer arithmetic for portfolio calculations; API snapshots retain original precision. The USD portfolio excludes unknown balances and other currencies; `/banks` shows all Plaid accounts. Opening balances and loan details unavailable from Plaid remain null. Plaid cached transactions are read separately from mock history. A successful Link exchange attempts transaction sync, and `/banks` provides a refresh action. Failures from a separate mock provider must not hide Plaid accounts on `/banks`.
+
+## Current synthetic credit profiles
+
+All mock Customer tables store one current synthetic credit score per normalized email, using the same versioned policy in each service's `app/credit.py`. Service startup upgrades/reconciles old databases. Core `GET /v1/credit-score` requires verified sign-in and active mock-bank consent; it returns one score and maintains one `CreditProfile` per app user. Conflicting reports are withheld, not averaged. The Overview renders one explicitly synthetic score card. Do not invent a score for Plaid-only users, or attach scores to individual accounts/transactions. Existing application scores are historical self-reported inputs and must not be rewritten as current profiles. See CREDIT_SCORE.md and scripts/sync_demo_credit.py.
+
+## Simulated transaction actions
+
+HTTP mock-bank account details now support deposits, salary, purchases, bill payments, withdrawals, refunds, transfers, card payments, principal-only bank-loan payments, interest, and fees according to account type. These supersede earlier read-only mock-bank consent copy. Each action requires institution authorization, owned accounts, positive cent amounts, and a persistent idempotency key. Transfers and payments update both sides atomically; balances must reconcile with ledger entries. Do not enable these actions for Plaid, CDs, IRAs, or fixture-only accounts, or present them as real payment execution. Standalone lending application schedules remain projections. See TRANSACTIONS.md and mock_bank/app/postings.py.
+
+## Sam, goals and forecasts (supersedes "sample insights until Nemotron" above)
+
+The core API now calls NVIDIA Nemotron server-side for Sam (`/v1/planning/sam/chat`) and for saved goal plans. `/planning` and `/sam` require `DATA_SOURCE=http`, a verified user, and (for Sam only) `NVIDIA_API_KEY` in `backend/.env`. Without them, the pages show explicit setup or sign-in states, never fixtures. All financial figures come from `backend/app/planning_math.py`. The model only explains them and must never promise scores, returns or approvals. Keep the model context an allowlisted aggregate (no emails, account numbers, merchant names or tokens), keep the finance-only pre-filter, model refusal and misuse lockout, and never call NVIDIA from the browser. The `/insights` page remains rule-based sample output. See SAM.md.
+
+## Core API storage: PostgreSQL on AWS RDS
+
+The core API stores users, connections, goals and Sam history in PostgreSQL. AWS RDS is the managed target. Configure `DATABASE_URL` (plus optional `DATABASE_SSLMODE`/`DATABASE_SSLROOTCERT`) only in `backend/.env`. RDS hosts default to TLS, and production refuses SQLite. Mock institutions keep their own SQLite databases. Use `scripts/migrate_core_to_postgres.py` to copy existing local data, and never rotate `ENCRYPTION_KEY` during the move. See backend/AWS_RDS.md.
+
+## Judge/tester access
+
+`.env.tester` (git-ignored, root) enables one tester email with a fixed six-digit code across the core API and the mock institutions. It is disabled in production and when mock DEMO_MODE is off. It does not affect other users and keeps expiry, attempt limits and single use. `scripts/seed_tester.py` seeds and links the account. Never widen the tester path to other emails, never make it default-on, and never commit `.env.tester`. See TESTER_ACCESS.md.
+
+## Docker Compose
+
+The root `compose.yaml` runs web, api and the six mock services. `compose.local-db.yaml` swaps RDS for a local PostgreSQL, and the `seed` service (profile `tools`) prepares the tester account. Secrets reach containers only via `env_file` at runtime. Never COPY `.env*` files into images, and keep host ports bound to 127.0.0.1. See DOCKER.md.

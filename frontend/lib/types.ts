@@ -71,6 +71,8 @@ export interface RawCustomer {
   email: string;
   date_of_birth: IsoDate;
   synthetic_identity_id: string;
+  credit_score: number;
+  credit_score_as_of: IsoDate;
   created_at: IsoDateTime;
 }
 
@@ -229,6 +231,17 @@ export interface InstitutionSummary {
 /** Assets add to net worth; liabilities are amounts owed. */
 export type BalanceClass = "asset" | "liability";
 
+export interface CreditScoreSummary {
+  score: number | null;
+  minimum: number;
+  maximum: number;
+  model: string;
+  synthetic: boolean;
+  as_of: IsoDate | null;
+  sources: string[];
+  status: "available" | "connect_bank" | "unavailable" | "conflicting_profiles";
+}
+
 export interface Account {
   id: string;
   source: SourceRef;
@@ -288,6 +301,17 @@ export interface TransactionPage {
   total: number;
   limit: number;
   offset: number;
+}
+
+export type TransactionOperation = "deposit" | "withdrawal" | "salary" | "purchase" | "payment" | "refund" | "transfer" | "card_payment" | "loan_payment" | "interest" | "fee";
+export interface TransactionInput {
+  request_id: string;
+  operation: TransactionOperation;
+  amount: string;
+  counterparty_account_id?: string;
+  category?: string;
+  merchant?: string;
+  description?: string;
 }
 
 export interface LoanOffer {

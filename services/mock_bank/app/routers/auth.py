@@ -35,6 +35,11 @@ def request_code(body: EmailRequest, request: Request, session: SessionDep, x_in
     if prior and (now-prior.requested_at).total_seconds() < settings.request_cooldown_seconds:
         raise HTTPException(429, "Please wait before requesting another code", headers={"Retry-After": str(settings.request_cooldown_seconds)})
     code = f"{secrets.randbelow(1000000):06}"
+    tester = bool(settings.demo_mode and settings.tester_email and settings.tester_code
+                  and body.email == settings.tester_email.strip().lower())
+    if tester:
+        # Fixed code for the documented tester account only; expiry, attempts and single use still apply.
+        code = settings.tester_code
     if prior is None:
         prior = Verification(email=body.email)
         session.add(prior)
@@ -44,7 +49,7 @@ def request_code(body: EmailRequest, request: Request, session: SessionDep, x_in
     prior.attempts = 0
     prior.used = False
     customer = session.scalar(select(Customer).where(Customer.email == body.email))
-    if settings.auth_code_delivery == "smtp" and customer:
+    if settings.auth_code_delivery == "smtp" and customer and not tester:
         if settings.mock_email_recipient_mode == "customer":
             delivery_settings = settings.model_copy(update={"auth_email_recipient": customer.email})
         try:
@@ -59,6 +64,8 @@ def request_code(body: EmailRequest, request: Request, session: SessionDep, x_in
             session.rollback()
             raise HTTPException(503, "Could not send the verification email. Check the mail configuration and try again.") from None
     session.commit()
+    if tester:
+        return {"message": "Tester account: enter the tester code.", "delivery": "tester"}
     if settings.auth_code_delivery == "smtp":
         return {"message": "If registered, a verification code was emailed to the registered customer address.", "delivery": "email"}
     if settings.demo_mode and customer:
@@ -82,5 +89,8 @@ def verify_code(body: VerifyRequest, request: Request, session: SessionDep):
         raise HTTPException(401, "Invalid or expired verification code")
     record.used = True
     session.commit()
-    return {"access_token": issue_token(request.app.state.secret, settings.bank_id, customer.id, settings.token_ttl_seconds),
-            "expires_in": settings.token_ttl_seconds}
+    tester = bool(settings.demo_mode and settings.tester_email and settings.tester_code
+                  and body.email == settings.tester_email.strip().lower())
+    ttl = settings.tester_token_ttl_seconds if tester else settings.token_ttl_seconds
+    return {"access_token": issue_token(request.app.state.secret, settings.bank_id, customer.id, ttl),
+            "expires_in": ttl}

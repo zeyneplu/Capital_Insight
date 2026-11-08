@@ -124,4 +124,15 @@ class DashboardOut(BaseModel):
 
 class Message(BaseModel):
     message: str
-    delivery: Literal["email", "server_log"] | None = None
+    delivery: Literal["email", "server_log", "tester"] | None = None
+
+
+class TransactionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{8,64}$")
+    operation: Literal["deposit","withdrawal","salary","purchase","payment","refund","transfer","card_payment","loan_payment","interest","fee"]
+    amount: Decimal = Field(gt=0, le=1000000, max_digits=14, decimal_places=2)
+    counterparty_account_id: str | None = Field(default=None, min_length=1, max_length=256)
+    category: str | None = Field(default=None, pattern=r"^[a-z_]{1,32}$")
+    merchant: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, min_length=1, max_length=200)

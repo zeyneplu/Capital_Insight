@@ -30,7 +30,7 @@ function Steps({ current }: { current: 0 | 1 | 2 }) {
 }
 
 function sharedData(institution: ConnectableInstitution): string[] {
-  if (institution.service === "mock_bank") return ["Your profile name and email at this bank", "Account list, balances and account details", "Transaction history"];
+  if (institution.service === "mock_bank") return ["Your profile name and email at this bank", "Account list, balances and account details", "Transaction history", "Permission to record simulated deposits, purchases, transfers and payments"];
   return ["Your profile name and email at this lender", "Your applications, decisions and projected schedules", "Permission to submit simulated applications for you"];
 }
 
@@ -79,7 +79,7 @@ export function ConsentFlow({
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-muted">Read-only. No payments, transfers or real funding. You can disconnect at any time.</p>
+              <p className="mt-2 text-xs text-muted">Mock transactions update fictional records only. No real money moves. You can disconnect at any time.</p>
             </div>
             <Field id="consent-email" label="Email registered at this institution" hint={`Demo customer: ${institution.demoEmail}`}>
               {(describedBy) => (
@@ -111,6 +111,10 @@ export function ConsentFlow({
               <Alert tone="demo" title="Demo mode">
                 Use the fixture-only code <strong className="font-mono tracking-widest">{demoCode}</strong>. It never works against the live mock services,
                 which generate and deliver their own random code.
+              </Alert>
+            ) : state.delivery === "tester" ? (
+              <Alert tone="demo" title="Tester account">
+                No email is sent for the documented tester account. Enter the tester code you were given.
               </Alert>
             ) : state.delivery === "email" ? (
               <Alert tone="info" title="Check your inbox">

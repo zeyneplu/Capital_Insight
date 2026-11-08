@@ -38,6 +38,8 @@ def integrated(settings, tmp_path):
             return await transports[request.url.host].handle_async_request(request)
         upstream = httpx.AsyncClient(transport=httpx.MockTransport(send))
         settings.mock_service_urls = {provider: f"http://{provider}" for provider in transports}
+        for provider, address in settings.mock_service_urls.items():
+            setattr(settings, f"{provider}_url", address)
         client = stack.enter_context(TestClient(create_app(settings, http_client=upstream)))
         response = client.post("/v1/auth/register", json={"email": "alice@example.test", "password": "hackathon-2026"})
         from backend.app.models import User
@@ -63,6 +65,25 @@ def connect(client, headers, provider, caplog):
     assert response.status_code == 200, response.text
     assert "access_token" not in response.json() and "encrypted_token" not in response.json()
     return response.json()
+
+
+def test_postings_work_through_both_core_interfaces(integrated,caplog):
+    from decimal import Decimal
+    from uuid import uuid4
+    client,headers,_=integrated
+    connect(client,headers,"chase",caplog)
+    account=next(item for item in client.get("/v1/accounts",headers=headers).json()["items"] if item["account_type"]=="checking")
+    before=Decimal(account["balance"])
+    sid=client.post("/api/v1/sessions",headers=headers).json()["session_id"]
+    for endpoint,auth in [(f"/v1/accounts/{account['id']}/transactions",headers),
+        (f"/api/v1/accounts/{account['source_account_id']}/transactions",{**headers,"X-Session-Id":sid})]:
+        body={"request_id":str(uuid4()),"operation":"salary","amount":"100.00","merchant":"Test employer"}
+        result=client.post(endpoint,headers=auth,json=body)
+        assert result.status_code==201,result.text
+        assert result.json()["transactions"][0]["category"]=="salary"
+        assert client.post(endpoint,headers=auth,json=body).json()["replayed"] is True
+    after=next(item for item in client.get("/v1/accounts",headers=headers).json()["items"] if item["id"]==account["id"])
+    assert Decimal(after["balance"])==before+Decimal("200")
 
 
 def test_all_mock_services_portfolio_and_scoped_transactions(integrated, caplog):

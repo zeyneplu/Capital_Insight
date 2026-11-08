@@ -58,6 +58,22 @@ def services() -> list[dict]:
     return stack
 
 
+TESTER_KEYS = ("TESTER_EMAIL", "TESTER_CODE")
+
+
+def tester_env() -> dict[str, str]:
+    """Judge/tester access from the private, git-ignored .env.tester (absent = disabled)."""
+    path = ROOT / ".env.tester"
+    if not path.is_file():
+        return {}
+    values = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, _, value = line.strip().partition("=")
+        if key in TESTER_KEYS and value.strip():
+            values[key] = value.strip()
+    return values if len(values) == len(TESTER_KEYS) else {}
+
+
 def watch(name: str, stream, log_path: Path) -> None:
     """Copies output to a log file and surfaces consent codes on the console."""
     with log_path.open("w", encoding="utf-8") as log:
@@ -115,7 +131,12 @@ def main() -> int:
         else:
             print("Frontend skipped: run `npm ci` in frontend/ first (and make sure Node.js is installed).")
 
+    tester = tester_env()
+    if tester:
+        print(f"Tester access enabled for {tester['TESTER_EMAIL']} (from .env.tester).")
     for spec in stack:
+        if spec["name"] != "frontend":
+            spec["env"] = {**spec["env"], **tester}
         process = subprocess.Popen(
             spec["cmd"], cwd=spec["cwd"], env={**os.environ, **spec["env"]},
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,

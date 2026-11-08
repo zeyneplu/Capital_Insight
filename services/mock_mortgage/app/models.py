@@ -1,8 +1,11 @@
 from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy import ForeignKey, Numeric, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from .database import Base, UTCDateTime, utcnow
+
+
+from .credit import customer_score_default
 
 
 class Metadata(Base):
@@ -13,12 +16,15 @@ class Metadata(Base):
 
 class Customer(Base):
     __tablename__ = "customers"
+    __table_args__ = (CheckConstraint("credit_score BETWEEN 300 AND 850"),)
     id: Mapped[str] = mapped_column(primary_key=True)
     first_name: Mapped[str]
     last_name: Mapped[str]
     email: Mapped[str] = mapped_column(unique=True)
     date_of_birth: Mapped[date]
     synthetic_identity_id: Mapped[str] = mapped_column(unique=True)
+    credit_score: Mapped[int] = mapped_column(default=customer_score_default)
+    credit_score_as_of: Mapped[date] = mapped_column(default=date.today)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 

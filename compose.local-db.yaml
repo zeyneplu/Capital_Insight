@@ -1,0 +1,37 @@
+# Offline alternative to AWS RDS: a local PostgreSQL container for the core API.
+#   docker compose -f compose.yaml -f compose.local-db.yaml up --build -d
+# Data lives in the postgres_data volume and is separate from RDS.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: capital
+      # Fixed credentials: this database is reachable only inside the Compose network.
+      POSTGRES_PASSWORD: capital_demo
+      POSTGRES_DB: capital_insight
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capital -d capital_insight"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    environment:
+      DATABASE_URL: postgresql+psycopg://capital:capital_demo@postgres:5432/capital_insight
+      DATABASE_SSLMODE: disable
+      DATABASE_SSLROOTCERT: ""
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  seed:
+    environment:
+      DATABASE_URL: postgresql+psycopg://capital:capital_demo@postgres:5432/capital_insight
+      DATABASE_SSLMODE: disable
+      DATABASE_SSLROOTCERT: ""
+
+volumes:
+  postgres_data:

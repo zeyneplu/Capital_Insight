@@ -116,6 +116,17 @@ def test_unconfigured_plaid_fails_without_network(plaid_context):
     assert stub.requests == []
 
 
+def test_simulated_postings_cannot_mutate_plaid_accounts(plaid_context):
+    from uuid import uuid4
+    _,client,headers,stub=plaid_context
+    connection_id=connect(client,headers)
+    before=len(stub.requests)
+    result=client.post(f"/v1/accounts/{connection_id}:checking-1/transactions",headers=headers,
+        json={"request_id":str(uuid4()),"operation":"deposit","amount":"10.00"})
+    assert result.status_code==422
+    assert len(stub.requests)==before
+
+
 def test_sandbox_api_only_token_is_disabled_in_production(plaid_context):
     app, client, headers, stub = plaid_context
     response = client.post("/v1/plaid/sandbox/public-token", headers=headers, json={})

@@ -1,3 +1,4 @@
+import { syntheticCreditScore } from "../credit-score.ts";
 /**
  * Synthetic institutions, mirroring the configured mock services
  * (services/mock_bank compose instances, mock_loan, mock_mortgage).
@@ -102,6 +103,8 @@ export function customerFor(institutionId: string): RawCustomer {
     email: `customer1@${institutionId}.example.test`,
     date_of_birth: "1990-03-12",
     synthetic_identity_id: `SYNTH-${institutionId}-customer-001`,
+    credit_score: syntheticCreditScore("demo-user@capital-insight.example.test"),
+    credit_score_as_of: SNAPSHOT_DATE,
     created_at: SNAPSHOT_TIMESTAMP,
   };
 }

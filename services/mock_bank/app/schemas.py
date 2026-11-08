@@ -18,6 +18,8 @@ class CustomerOut(ORMModel):
     email: str
     date_of_birth: date
     synthetic_identity_id: str
+    credit_score: int = Field(ge=300, le=850)
+    credit_score_as_of: date
     created_at: datetime
 
 
@@ -84,6 +86,24 @@ class TransactionPage(BaseModel):
     offset: int
 
 
+class TransactionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    request_id: str = Field(pattern=r"^[A-Za-z0-9_-]{8,64}$")
+    operation: Literal["deposit","withdrawal","salary","purchase","payment","refund","transfer","card_payment","loan_payment","interest","fee"]
+    amount: Decimal = Field(gt=0, le=1000000, max_digits=14, decimal_places=2)
+    counterparty_account_id: str | None = Field(default=None, min_length=1, max_length=128)
+    category: Category | None = None
+    merchant: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class PostingOut(BaseModel):
+    posting_id: str
+    transactions: list[TransactionOut]
+    simulated: bool = True
+    replayed: bool
+
+
 class EmailRequest(BaseModel):
     delivery_email: str | None = Field(default=None, max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
     email: str = Field(max_length=254, examples=["customer1@chase.example.test"])
@@ -103,7 +123,7 @@ class VerifyRequest(EmailRequest):
 
 class Message(BaseModel):
     message: str
-    delivery: Literal["email", "server_log"] = "server_log"
+    delivery: Literal["email", "server_log", "tester"] = "server_log"
 
 
 class TokenOut(BaseModel):

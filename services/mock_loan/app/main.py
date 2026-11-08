@@ -1,6 +1,7 @@
 """Independent loan-specific API: python -m uvicorn app.main:app --port 8005."""
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from .credit import upgrade_credit_schema
 from .config import Settings
 from .database import Base, make_database
 from .models import Metadata
@@ -18,6 +19,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.engine = engine
         try:
             Base.metadata.create_all(engine)
+            upgrade_credit_schema(engine)
             with factory() as session:
                 session.connection().exec_driver_sql("BEGIN IMMEDIATE")
                 seed_loans(session, settings)

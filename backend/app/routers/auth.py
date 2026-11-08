@@ -118,6 +118,12 @@ class EmailCodeVerify(EmailCodeRequest):
     code: str = Field(pattern=r"^[0-9]{6}$")
 
 
+def is_tester(settings, email: str) -> bool:
+    """The documented judge/tester account; disabled in production and unless fully configured."""
+    return bool(settings.environment != "production" and settings.tester_email and settings.tester_code
+                and email == settings.tester_email.strip().lower())
+
+
 def lock_email_challenge(session):
     if session.bind.dialect.name == "sqlite":
         session.connection().exec_driver_sql("BEGIN IMMEDIATE")
@@ -126,16 +132,18 @@ def lock_email_challenge(session):
 @router.post("/request-email-code", status_code=202, summary="Send a sign-in code to your own email")
 def request_email_code(body: EmailCodeRequest, request: Request, session: SessionDep):
     settings = request.app.state.settings
-    try:
-        validate_mail_configuration(settings)
-    except MailDeliveryError:
-        raise HTTPException(503, "Email sign-in requires SMTP credentials in .env.mail") from None
+    tester = is_tester(settings, body.email)
+    if not tester:
+        try:
+            validate_mail_configuration(settings)
+        except MailDeliveryError:
+            raise HTTPException(503, "Email sign-in requires SMTP credentials in .env.mail") from None
     lock_email_challenge(session)
     prior = session.scalar(select(EmailChallenge).where(EmailChallenge.email == body.email).with_for_update())
     now = utcnow()
     if prior and (now-prior.requested_at).total_seconds() < 30:
         raise HTTPException(429, "Wait before requesting another email", headers={"Retry-After":"30"})
-    code = f"{secrets.randbelow(1000000):06}"
+    code = settings.tester_code.get_secret_value() if tester else f"{secrets.randbelow(1000000):06}"
     if prior is None:
         prior = EmailChallenge(email=body.email)
         session.add(prior)
@@ -145,7 +153,8 @@ def request_email_code(body: EmailCodeRequest, request: Request, session: Sessio
     prior.attempts = 0
     prior.used = False
     try:
-        send_user_code(settings, body.email, code, 300)
+        if not tester:
+            send_user_code(settings, body.email, code, 300)
         session.commit()
     except MailDeliveryError:
         session.rollback()
@@ -153,6 +162,8 @@ def request_email_code(body: EmailCodeRequest, request: Request, session: Sessio
     except IntegrityError:
         session.rollback()
         raise HTTPException(429, "A code was requested concurrently; wait before retrying") from None
+    if tester:
+        return {"message":"Tester account: enter the tester code.", "delivery":"tester"}
     return {"message":"A sign-in code was sent to your email.", "delivery":"email"}
 
 

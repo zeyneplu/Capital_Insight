@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Path, Query
 from ..deps import ClientDep, RegistryDep, SessionDep, authed_call
 from ..institutions import Institution
 from ..upstream import UpstreamError, as_http
+from ..schemas import TransactionRequest
 
 router = APIRouter(prefix="/api/v1", tags=["Banking"])
 
@@ -70,6 +71,15 @@ async def locate(session, http, registry, account_id: str) -> tuple[Institution,
 async def account(account_id: SafeId, session: SessionDep, http: ClientDep, registry: RegistryDep) -> dict:
     _, raw = await locate(session, http, registry, account_id)
     return raw
+
+
+@router.post("/accounts/{account_id}/transactions", status_code=201, summary="Simulate an owned mock-bank transaction")
+async def create_transaction(account_id: SafeId, body: TransactionRequest, session: SessionDep, http: ClientDep, registry: RegistryDep):
+    bank, _ = await locate(session,http,registry,account_id)
+    try:
+        return await authed_call(http,session,bank,"POST",f"/v1/accounts/{account_id}/transactions",json=body.model_dump(mode="json"))
+    except UpstreamError as error:
+        raise as_http(error) from error
 
 
 @router.get("/accounts/{account_id}/transactions", summary="A page of transactions (service semantics)")

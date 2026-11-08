@@ -42,13 +42,34 @@ class Base(DeclarativeBase):
     pass
 
 
-def make_database(database_url: str):
+def postgres_url(database_url: str, sslmode: str | None = None, sslrootcert: str | None = None):
+    """Normalize a PostgreSQL URL to psycopg 3 and apply TLS defaults for managed hosts."""
     if database_url.startswith("postgres://"):
         database_url = "postgresql+psycopg://" + database_url.removeprefix("postgres://")
     parsed = make_url(database_url)
+    if parsed.get_backend_name() != "postgresql":
+        return parsed
     if parsed.drivername == "postgresql":
         parsed = parsed.set(drivername="postgresql+psycopg")
+    query = dict(parsed.query)
+    if sslmode:
+        query["sslmode"] = sslmode
+    elif "sslmode" not in query and (parsed.host or "").endswith(".rds.amazonaws.com"):
+        # AWS RDS: never send credentials or financial data over plaintext by default.
+        query["sslmode"] = "require"
+    if sslrootcert:
+        path = Path(sslrootcert)
+        query["sslrootcert"] = str(path if path.is_absolute() else (BACKEND_ROOT / path).resolve())
+    return parsed.set(query=query)
+
+
+def make_database(database_url: str, *, sslmode: str | None = None, sslrootcert: str | None = None,
+                  pool_size: int = 5, max_overflow: int = 5, pool_recycle: int = 1800, connect_timeout: int = 10):
+    parsed = postgres_url(database_url, sslmode, sslrootcert)
     options = {"pool_pre_ping": True}
+    if parsed.get_backend_name() == "postgresql":
+        options.update(pool_size=pool_size, max_overflow=max_overflow, pool_recycle=pool_recycle,
+                       connect_args={"connect_timeout": connect_timeout, "application_name": "capital_insight_core"})
     if parsed.get_backend_name() == "sqlite":
         options["connect_args"] = {"check_same_thread": False, "timeout": 30}
         if not parsed.database or parsed.database == ":memory:":

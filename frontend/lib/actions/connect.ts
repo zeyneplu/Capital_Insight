@@ -13,7 +13,7 @@ export interface ConsentFormState {
   step: "email" | "code";
   email: string;
   message?: string;
-  delivery?: "email" | "server_log";
+  delivery?: "email" | "server_log" | "tester";
   error?: string;
   retryAfterSeconds?: number;
 }

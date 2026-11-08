@@ -118,6 +118,7 @@ def normalize_account(connection_id: str, raw: dict[str, Any]) -> dict[str, Any]
         "account_number_last4": raw.get("mask"),
         "currency": balances.get("iso_currency_code") or balances.get("unofficial_currency_code"),
         "balance": decimal_string(balances.get("current")),
+        "credit_limit": decimal_string(balances.get("limit")) if source_type=="credit" else None,
         "balance_kind": kind,
         "balance_as_of": balances.get("last_updated_datetime"),
         "balance_is_cached": True,

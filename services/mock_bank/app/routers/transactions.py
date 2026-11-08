@@ -2,9 +2,10 @@ from datetime import date
 from typing import Annotated
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select, func
-from ..dependencies import SessionDep, AccountDep
+from ..dependencies import SessionDep, AccountDep, CustomerDep
 from ..models import Transaction
-from ..schemas import TransactionPage, Category
+from ..schemas import TransactionPage, Category, TransactionIn, PostingOut
+from ..postings import post_transaction
 router = APIRouter(prefix="/v1/accounts", tags=["Transactions"])
 
 
@@ -26,5 +27,11 @@ def transactions(session: SessionDep, account: AccountDep,
         filters.append(Transaction.category == category)
     total = session.scalar(select(func.count()).select_from(Transaction).where(*filters))
     items = session.scalars(select(Transaction).where(*filters).order_by(
-        Transaction.transaction_date.desc(), Transaction.id.desc()).offset(offset).limit(limit)).all()
+        Transaction.transaction_date.desc(), Transaction.created_at.desc(), Transaction.id.desc()).offset(offset).limit(limit)).all()
     return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@router.post("/{account_id}/transactions", response_model=PostingOut, status_code=201,
+             summary="Post an idempotent simulated transaction to an owned mock account")
+def create_transaction(account_id: str, body: TransactionIn, session: SessionDep, customer: CustomerDep):
+    return post_transaction(session,customer.id,account_id,body)

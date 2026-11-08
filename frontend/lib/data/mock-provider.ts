@@ -117,6 +117,20 @@ function scheduleFor(application: LoanApplication | MortgageApplication | undefi
 export const mockProvider: DataProvider = {
   kind: "mock",
 
+  async postTransaction() {
+    return {ok:false,message:"Transaction actions require live mock services. Fixture balances are read-only."};
+  },
+
+  async getCreditScore() {
+    const links = (await mockProvider.listConnections()).filter(link => link.connected && link.institution.service === "mock_bank");
+    const customer = links[0]?.customer;
+    return {
+      score:customer?.credit_score ?? null, minimum:300, maximum:850,
+      model:"Synthetic demo score v1", synthetic:true, as_of:customer?.credit_score_as_of ?? null,
+      sources:links.map(link=>link.institution.name), status:customer ? "available" : "connect_bank",
+    };
+  },
+
   async getDashboard() {
     await simulateLatency();
     const session = await readSession();

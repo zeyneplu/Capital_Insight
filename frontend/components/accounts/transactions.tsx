@@ -4,6 +4,15 @@ import { Money } from "@/components/ui/money";
 import { Badge, Button, ButtonLink } from "@/components/ui/primitives";
 import { CATEGORY_LABELS, formatDate } from "@/lib/format";
 import { TRANSACTION_CATEGORIES, type Transaction } from "@/lib/types";
+import { TRANSACTION_LABELS } from "@/lib/finance/transaction-operations";
+import type { TransactionOperation } from "@/lib/types";
+
+const transactionLabel = (transaction: Transaction) => {
+  if (transaction.category === "salary") return "Salary / paycheck";
+  if (transaction.category === "debt_payment" && transaction.type === "payment") return "Debt payment";
+  if (transaction.type === "transfer") return "Transfer";
+  return TRANSACTION_LABELS[transaction.type as TransactionOperation] ?? transaction.type.replaceAll("_"," ");
+};
 
 /** Signed from the customer's cash perspective: credits +, debits -. */
 const signedAmount = (transaction: Transaction) => (transaction.direction === "credit" ? transaction.amount : `-${transaction.amount}`);
@@ -71,7 +80,7 @@ export function TransactionList({ transactions, caption }: { transactions: Trans
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{transaction.description}</p>
               <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                {formatDate(transaction.date)} <Badge>{CATEGORY_LABELS[transaction.category]}</Badge>
+                {formatDate(transaction.date)} <Badge>{CATEGORY_LABELS[transaction.category]}</Badge><Badge>{transactionLabel(transaction)}</Badge>
               </p>
             </div>
             <Money value={signedAmount(transaction)} signed tone="flow" className="text-sm font-semibold" />
@@ -101,7 +110,7 @@ export function TransactionList({ transactions, caption }: { transactions: Trans
                 <td className="py-2.5 pr-4">
                   <Badge>{CATEGORY_LABELS[transaction.category]}</Badge>
                 </td>
-                <td className="py-2.5 pr-4 text-muted capitalize">{transaction.direction}</td>
+                <td className="py-2.5 pr-4 text-muted"><span>{transactionLabel(transaction)}</span><span className="block text-xs capitalize">{transaction.direction}</span></td>
                 <td className="py-2.5 text-right font-semibold">
                   <Money value={signedAmount(transaction)} signed tone="flow" />
                 </td>

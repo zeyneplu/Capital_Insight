@@ -1,0 +1,139 @@
+# Capital Insight: full stack with Docker Compose.
+#
+#   docker compose up --build -d          # frontend, core API, 4 mock banks, mock loans, mock mortgages
+#   docker compose run --rm seed          # prepare the judge/tester account (needs .env.tester)
+#   docker compose logs -f api            # follow a service; consent codes appear in mock logs
+#   docker compose down                   # stop (named volumes keep mock data)
+#
+# The core API uses DATABASE_URL from backend/.env (AWS RDS PostgreSQL). For an offline local
+# PostgreSQL instead:  docker compose -f compose.yaml -f compose.local-db.yaml up --build -d
+# Mock institutions always keep their own SQLite files in named volumes.
+# Host ports bind to 127.0.0.1 only. Override with WEB_PORT / API_PORT (e.g. in a root .env).
+
+name: capital-insight
+
+x-mock: &mock
+  env_file:
+    - path: .env.mail
+      required: false
+    - path: .env.tester
+      required: false
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+    interval: 5s
+    timeout: 5s
+    retries: 20
+
+services:
+  web:
+    build:
+      context: ./frontend
+      # Must match the runtime values below: statically prerendered pages are fixed at build time.
+      args:
+        DATA_SOURCE: http
+        BACKEND_API_URL: http://api:8000
+    environment:
+      DATA_SOURCE: http
+      BACKEND_API_URL: http://api:8000
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file:
+      - path: backend/.env
+      - path: .env.mail
+        required: false
+      - path: .env.tester
+        required: false
+    environment:
+      CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3000}"]'
+      MOCK_SERVICE_URLS: '{"chase":"http://chase:8000","amex":"http://amex:8000","pnc":"http://pnc:8000","discover":"http://discover:8000","loans":"http://loans:8000","mortgages":"http://mortgages:8000"}'
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - api_data:/service/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    depends_on:
+      chase: {condition: service_healthy}
+      amex: {condition: service_healthy}
+      pnc: {condition: service_healthy}
+      discover: {condition: service_healthy}
+      loans: {condition: service_healthy}
+      mortgages: {condition: service_healthy}
+    restart: unless-stopped
+
+  # The four banks share one volume; each uses its own database file in it.
+  chase:
+    <<: *mock
+    build: ./services/mock_bank
+    environment: {BANK_ID: chase, BANK_NAME: Chase Mock Bank, DATABASE_URL: "sqlite:///./data/chase.db", DATA_SEED: "101", DEMO_MODE: "true"}
+    ports: ["127.0.0.1:8001:8000"]
+    volumes: [bank_data:/service/data]
+
+  amex:
+    <<: *mock
+    build: ./services/mock_bank
+    environment: {BANK_ID: amex, BANK_NAME: American Express Mock Bank, DATABASE_URL: "sqlite:///./data/amex.db", DATA_SEED: "202", DEMO_MODE: "true"}
+    ports: ["127.0.0.1:8002:8000"]
+    volumes: [bank_data:/service/data]
+
+  pnc:
+    <<: *mock
+    build: ./services/mock_bank
+    environment: {BANK_ID: pnc, BANK_NAME: PNC Mock Bank, DATABASE_URL: "sqlite:///./data/pnc.db", DATA_SEED: "303", DEMO_MODE: "true"}
+    ports: ["127.0.0.1:8003:8000"]
+    volumes: [bank_data:/service/data]
+
+  discover:
+    <<: *mock
+    build: ./services/mock_bank
+    environment: {BANK_ID: discover, BANK_NAME: Discover Mock Bank, DATABASE_URL: "sqlite:///./data/discover.db", DATA_SEED: "404", DEMO_MODE: "true"}
+    ports: ["127.0.0.1:8004:8000"]
+    volumes: [bank_data:/service/data]
+
+  loans:
+    <<: *mock
+    build: ./services/mock_loan
+    environment: {LENDER_ID: loans, LENDER_NAME: Capital Insight Mock Loans, DATABASE_URL: "sqlite:///./data/loans.db", DATA_SEED: "505", DEMO_MODE: "true"}
+    ports: ["127.0.0.1:8005:8000"]
+    volumes: [loan_data:/service/data]
+
+  mortgages:
+    <<: *mock
+    build: ./services/mock_mortgage
+    environment: {LENDER_ID: mortgages, LENDER_NAME: Capital Insight Mock Mortgages, DATABASE_URL: "sqlite:///./data/mortgages.db", DATA_SEED: "606", DEMO_MODE: "true"}
+    ports: ["127.0.0.1:8006:8000"]
+    volumes: [mortgage_data:/service/data]
+
+  # One-shot: docker compose run --rm seed
+  seed:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile.tools
+    env_file:
+      - path: backend/.env
+      - path: .env.tester
+        required: false
+    volumes:
+      - bank_data:/repo/services/mock_bank/data
+      - loan_data:/repo/services/mock_loan/data
+      - mortgage_data:/repo/services/mock_mortgage/data
+    depends_on:
+      api: {condition: service_healthy}
+
+volumes:
+  api_data:
+  bank_data:
+  loan_data:
+  mortgage_data:

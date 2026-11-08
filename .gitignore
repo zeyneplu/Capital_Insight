@@ -211,3 +211,6 @@ logs/
 
 # Private SMTP configuration shared by local mock institutions
 .env.mail
+
+# Judge/tester sign-in code (private)
+.env.tester

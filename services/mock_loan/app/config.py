@@ -12,6 +12,12 @@ class Settings(MailSettings):
     data_seed: int = 505
     seed_date: date = date(2026, 11, 1)
     demo_mode: bool = False
+    # Judge/tester access (development only): with DEMO_MODE=true and both values set, this one
+    # institution customer email always receives TESTER_CODE instead of a random emailed code.
+    tester_email: str | None = None
+    tester_code: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
+    # Tester consents outlast a judging session; everyone else keeps TOKEN_TTL_SECONDS.
+    tester_token_ttl_seconds: int = Field(default=43200, ge=60, le=86400)
     token_ttl_seconds: int = Field(default=1800, ge=1)
     code_ttl_seconds: int = Field(default=300, ge=1)
     code_attempt_limit: int = Field(default=5, ge=1)

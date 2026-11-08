@@ -55,7 +55,12 @@ def provision_mock(session, models, provider, email, record_model):
     transactions = 0
     for index, record in enumerate(records, 1):
         record_id = f"{customer_id}-record-{index}"
-        session.add(clone(record, id=record_id, customer_id=customer_id))
+        changes = {"id":record_id, "customer_id":customer_id}
+        if hasattr(record, "credit_score"):
+            # Newly provisioned fictional applications start with this customer's score.
+            from services.mock_bank.app.credit import synthetic_credit_score
+            changes["credit_score"] = synthetic_credit_score(email)
+        session.add(clone(record, **changes))
         session.flush()
         if hasattr(models, "Transaction"):
             for number, transaction in enumerate(session.scalars(select(models.Transaction).where(
@@ -102,6 +107,7 @@ def main():
         path = ROOT / "services" / service / "data" / f"{provider}.db"
         engine, factory = database.make_database(f"sqlite:///{path.as_posix()}")
         try:
+            importlib.import_module(f"services.{service}.app.credit").upgrade_credit_schema(engine)
             with factory() as session:
                 result = provision_mock(session, models, provider, email, getattr(models, model_name))
                 print(f"{provider}: {result}")

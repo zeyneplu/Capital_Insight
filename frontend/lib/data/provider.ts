@@ -17,6 +17,7 @@ import type {
   Connection,
   ConsentStep,
   Dashboard,
+  CreditScoreSummary,
   InsightReport,
   LoanApplication,
   LoanOffer,
@@ -24,6 +25,7 @@ import type {
   ScheduleResult,
   TransactionFilters,
   TransactionPage,
+  TransactionInput,
 } from "@/lib/types";
 import type { FieldError } from "@/lib/finance/underwriting";
 
@@ -39,7 +41,7 @@ export type SubmitResult<T> =
   | { ok: false; status: 401 | 422; errors: FieldError[] };
 
 export type RequestCodeResult =
-  | { ok: true; message: string; delivery?: "email" | "server_log" }
+  | { ok: true; message: string; delivery?: "email" | "server_log" | "tester" }
   | { ok: false; status: 404 | 422 | 429 | 503; message: string; retryAfterSeconds?: number };
 
 export type VerifyCodeResult = { ok: true; institution: ConnectableInstitution } | { ok: false; status: 401 | 404 | 422; message: string };
@@ -48,6 +50,7 @@ export interface DataProvider {
   readonly kind: DataSourceKind;
 
   getDashboard(): Promise<Dashboard>;
+  getCreditScore(): Promise<CreditScoreSummary>;
   /** Sample, rule-based output in fixture mode; AI analysis from the backend later. */
   getInsights(): Promise<InsightReport>;
 
@@ -65,6 +68,7 @@ export interface DataProvider {
   getAccount(accountId: string): Promise<Account | null>;
   /** `null` when the account is unavailable. Filters follow the service's inclusive date semantics. */
   listTransactions(accountId: string, filters: TransactionFilters): Promise<TransactionPage | null>;
+  postTransaction(accountId: string, input: TransactionInput): Promise<{ok:true;replayed:boolean}|{ok:false;message:string}>;
 
   // Lending
   listLoanOffers(): Promise<LoanOffer[]>;

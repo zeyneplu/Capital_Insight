@@ -1,5 +1,5 @@
 export interface NavItem {
-  href: "/" | "/accounts" | "/loans" | "/mortgages" | "/insights" | "/connect";
+  href: "/" | "/accounts" | "/loans" | "/mortgages" | "/insights" | "/planning" | "/sam" | "/connect";
   label: string;
 }
 
@@ -9,6 +9,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/loans", label: "Loans" },
   { href: "/mortgages", label: "Mortgages" },
   { href: "/insights", label: "Insights" },
+  { href: "/planning", label: "Plan & goals" },
+  { href: "/sam", label: "Ask Sam" },
   { href: "/connect", label: "Connections" },
 ];
 

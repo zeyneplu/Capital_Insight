@@ -8,7 +8,7 @@ from sqlalchemy import select
 from ..dependencies import SessionDep, VerifiedUserDep
 from ..models import Connection
 from ..providers import bank_accounts, projections, mock_call, mock_token, scoped_id, segment
-from ..schemas import AccountCollection, ProjectionCollection, TransactionPage, DashboardOut
+from ..schemas import AccountCollection, ProjectionCollection, TransactionPage, DashboardOut, TransactionRequest
 
 router = APIRouter(prefix="/v1", tags=["Portfolio"])
 
@@ -92,6 +92,31 @@ async def transactions(account_id: str, request: Request, session: SessionDep, u
     page["items"] = [{**item, "source_transaction_id": item["id"],
         "id": scoped_id(connection.id, item["id"]), "account_id": account_id} for item in page["items"]]
     return page
+
+
+@router.post("/accounts/{account_id}/transactions", status_code=201, summary="Post a simulated mock-bank transaction")
+async def create_transaction(account_id: str, body: TransactionRequest, request: Request, session: SessionDep, user: VerifiedUserDep):
+    if ":" not in account_id:
+        raise HTTPException(404,"Account not found")
+    connection_id, remote_id = account_id.split(":",1)
+    connection = session.scalar(select(Connection).where(Connection.id==connection_id,Connection.user_id==user.id))
+    if connection is None:
+        raise HTTPException(404,"Account not found")
+    if connection.kind != "mock_bank":
+        raise HTTPException(422,"Simulated transactions are only available for mock-bank accounts, not Plaid")
+    payload = body.model_dump(mode="json")
+    other = payload.get("counterparty_account_id")
+    if other and ":" in other:
+        prefix, other_id = other.split(":",1)
+        if prefix != connection_id:
+            raise HTTPException(422,"Use accounts from the same mock institution connection")
+        payload["counterparty_account_id"] = other_id
+    result = await mock_call(request,connection.provider,f"/v1/accounts/{segment(remote_id)}/transactions",
+        method="POST",token=mock_token(request,connection),body=payload)
+    result["transactions"] = [{**item,"source_transaction_id":item["id"],
+        "id":scoped_id(connection.id,item["id"]),"account_id":scoped_id(connection.id,item["account_id"])}
+        for item in result["transactions"]]
+    return result
 
 
 @router.get("/dashboard", response_model=DashboardOut,

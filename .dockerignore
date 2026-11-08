@@ -1,0 +1,17 @@
+# Root build context (used only by scripts/Dockerfile.tools). Never send secrets or data.
+.git
+.venv
+venv
+logs
+frontend
+**/node_modules
+**/data
+**/__pycache__
+**/.pytest_cache
+**/tests
+**/*.log
+**/.env
+**/.env.*
+.env.mail
+.env.tester
+backend/certs

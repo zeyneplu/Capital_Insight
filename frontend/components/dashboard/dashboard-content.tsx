@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { CreditScoreCard } from "./credit-score-card";
+import { PlanningWidgets } from "./planning-widgets";
 import { ColumnChart, RankedBars } from "@/components/charts/bars";
 import { Money } from "@/components/ui/money";
 import { Badge, ButtonLink, Card, EmptyState, LoadingBlock, Skeleton, StatTile, TextLink } from "@/components/ui/primitives";
@@ -65,7 +68,8 @@ function Obligations({ dashboard }: { dashboard: Dashboard }) {
 }
 
 export async function DashboardContent() {
-  const dashboard = await getDataProvider().getDashboard();
+  const provider = getDataProvider();
+  const [dashboard, credit] = await Promise.all([provider.getDashboard(), provider.getCreditScore()]);
 
   if (dashboard.connectedInstitutions.length === 0) {
     return (
@@ -83,6 +87,10 @@ export async function DashboardContent() {
 
   return (
     <div className="space-y-6">
+      <CreditScoreCard credit={credit} />
+      <Suspense fallback={<Skeleton className="h-20" />}>
+        <PlanningWidgets />
+      </Suspense>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="Net worth"

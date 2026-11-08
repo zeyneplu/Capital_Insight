@@ -7,7 +7,7 @@ from .config import Settings
 from .database import Base, make_database
 from .security import make_cipher
 from .migrations import upgrade_schema
-from .routers import auth, connections, portfolio, plaid
+from .routers import auth, connections, portfolio, plaid, credit, planning
 from .institutions import build_registry
 from .sessions import SessionStore
 from .routes import banking as frontend_banking, connections as frontend_connections, lending as frontend_lending
@@ -25,7 +25,11 @@ def create_app(settings: Settings | None = None,
 
     @asynccontextmanager
     async def lifespan(application):
-        engine, factory = make_database(settings.database_url)
+        engine, factory = make_database(
+            settings.database_url, sslmode=settings.database_sslmode, sslrootcert=settings.database_sslrootcert,
+            pool_size=settings.database_pool_size, max_overflow=settings.database_max_overflow,
+            pool_recycle=settings.database_pool_recycle_seconds,
+            connect_timeout=settings.database_connect_timeout_seconds)
         application.state.engine = engine
         application.state.session_factory = factory
         application.state.settings = settings
@@ -58,7 +62,7 @@ def create_app(settings: Settings | None = None,
         return {"status": "ok", "service": "capital_insight", "plaid_configured": bool(settings.plaid_client_id and settings.plaid_secret)}
 
     for router in (frontend_connections.router, frontend_banking.router, frontend_lending.router,
-                   auth.router, connections.router, portfolio.router, plaid.router):
+                   auth.router, connections.router, portfolio.router, plaid.router, credit.router, planning.router):
         application.include_router(router)
     return application
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import sys
 import asyncio
 import httpx
@@ -12,8 +13,21 @@ from backend.app.main import create_app
 
 @pytest.fixture
 def settings(tmp_path):
-    return Settings(_env_file=None, database_url=f"sqlite:///{tmp_path / 'core.db'}",
-                    encryption_key=Fernet.generate_key().decode(), plaid_client_id=None, plaid_secret=None)
+    # Set CORE_TEST_DATABASE_URL to a disposable PostgreSQL database to run core tests on Postgres.
+    # Every table is dropped before and after each test, so never point it at real data.
+    url = os.environ.get("CORE_TEST_DATABASE_URL") or f"sqlite:///{tmp_path / 'core.db'}"
+    if url.startswith(("postgresql", "postgres://")):
+        from backend.app import models  # noqa: F401
+        from backend.app.database import Base, make_database
+        engine, _ = make_database(url)
+        Base.metadata.drop_all(engine)
+        engine.dispose()
+    yield Settings(_env_file=None, database_url=url,
+                   encryption_key=Fernet.generate_key().decode(), plaid_client_id=None, plaid_secret=None)
+    if url.startswith(("postgresql", "postgres://")):
+        engine, _ = make_database(url)
+        Base.metadata.drop_all(engine)
+        engine.dispose()
 
 
 @pytest.fixture
