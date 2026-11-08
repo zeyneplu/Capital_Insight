@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import type {
   Account,
   ConnectableInstitution,
@@ -149,6 +150,8 @@ export const mockProvider: DataProvider = {
     const institution = findInstitution(institutionId);
     if (!institution) return null;
     const session = await readSession();
+    // Code expiry depends on the current time, so this must run per request.
+    await connection();
     const consent = session.consent;
     if (consent && consent.institutionId === institutionId && Date.now() - Date.parse(consent.requestedAt) < CODE_TTL_MS && consent.attempts < CODE_ATTEMPT_LIMIT) {
       return { step: "code", email: consent.email, codeRequestedAt: consent.requestedAt, attemptsRemaining: CODE_ATTEMPT_LIMIT - consent.attempts, demoCode: DEMO_CONSENT_CODE };
