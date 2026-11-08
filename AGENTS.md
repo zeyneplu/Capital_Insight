@@ -8,8 +8,8 @@ Capital Insight is a HackUTD 2026 financial wellness application. The intended e
 
 What exists today:
 
-- `frontend/`: initialized Next.js App Router starter, TypeScript, React, Tailwind CSS, and ESLint. It is not yet the Capital Insight UI.
-- `backend/`: placeholder directory. There is no main FastAPI application, aggregator, application login, PostgreSQL integration, or AI integration yet.
+- `backend/`: core API (FastAPI) with sessions, server-side token custody, and aggregation over the mock services (see `backend/Readme.md`). No application login, PostgreSQL, or AI integration yet.
+- `frontend/`: the Capital Insight UI (see `frontend/Readme.md`). Fixtures by default; `DATA_SOURCE=http` uses the core API.
 - `services/mock_bank/`: working synthetic banking API; one configurable instance per bank.
 - `services/mock_loan/`: independent synthetic loan API.
 - `services/mock_mortgage/`: independent synthetic mortgage API. Use this spelling.

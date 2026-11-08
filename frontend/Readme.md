@@ -90,7 +90,7 @@ connecting the backend replaces the provider, not the pages.
 | `DATA_SOURCE` | Behavior |
 | --- | --- |
 | unset / `mock` | Fixtures (default) |
-| `http` | Future backend. Currently throws a clear error and shows the error page; it never falls back to fixtures. |
+| `http` | The core API in `backend/` (set `BACKEND_API_URL`). If it or a bank fails, the error page is shown; it never falls back to fixtures. Set it in `.env.local` before `npm run build`, because the demo banner is prerendered. |
 | anything else | Configuration error |
 
 `DATA_SOURCE` and `BACKEND_API_URL` are read on the server only.
@@ -104,7 +104,7 @@ connecting the backend replaces the provider, not the pages.
 
 ## Not available yet
 
-- Main backend integration (`http-provider.ts` is a stub) and Capital Insight user login.
+- Capital Insight user login (core API sessions are anonymous and in memory).
 - Live calls to the mock services (they do not enable CORS; integrate server-side through the backend or a
   Route Handler).
 - AI analysis: Insights shows sample rule-based output until the backend provides Nemotron results.
