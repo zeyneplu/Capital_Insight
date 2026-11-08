@@ -1,0 +1,16 @@
+services:
+  mock-mortgage:
+    build: .
+    ports:
+      - "8006:8000"
+    environment:
+      LENDER_ID: mortgages
+      LENDER_NAME: Capital Insight Mock Mortgages
+      DATABASE_URL: sqlite:///./data/mortgages.db
+      DATA_SEED: "606"
+      DEMO_MODE: "true"
+    volumes:
+      - mortgage_data:/service/data
+    restart: unless-stopped
+volumes:
+  mortgage_data:
