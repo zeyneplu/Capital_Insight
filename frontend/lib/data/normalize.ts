@@ -21,7 +21,7 @@ import type {
   Transaction,
 } from "../types.ts";
 
-const LIABILITY_TYPES: ReadonlySet<AccountType> = new Set(["credit_card", "personal_loan", "auto_loan", "mortgage"]);
+const LIABILITY_TYPES: ReadonlySet<AccountType> = new Set(["credit_card", "personal_loan", "auto_loan", "mortgage", "other_liability"]);
 
 export function classifyAccount(type: AccountType): BalanceClass {
   return LIABILITY_TYPES.has(type) ? "liability" : "asset";

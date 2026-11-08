@@ -36,7 +36,8 @@ def create_session(request: Request, database: DatabaseDep, credentials: BearerD
 
 
 @router.get("/institutions", summary="Institutions and this session's connection status")
-def institutions(session: SessionDep, registry: RegistryDep) -> list[dict]:
+def institutions(session: SessionDep, registry: RegistryDep, response: Response) -> list[dict]:
+    response.headers["X-Session-Id"] = session.id
     result = []
     for institution in registry.values():
         connection = session.active(institution.id)

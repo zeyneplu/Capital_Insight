@@ -34,6 +34,9 @@ export const ACCOUNT_TYPES = [
   "credit_card",
   "cd",
   "ira",
+  "investment",
+  "other_asset",
+  "other_liability",
   "personal_loan",
   "auto_loan",
   "mortgage",
@@ -208,7 +211,7 @@ export interface RawInstallment {
 // View models
 // ---------------------------------------------------------------------------
 
-export type ServiceKind = "mock_bank" | "mock_loan" | "mock_mortgage";
+export type ServiceKind = "mock_bank" | "mock_loan" | "mock_mortgage" | "plaid";
 
 /** Where a normalized record came from. Never drop this when aggregating. */
 export interface SourceRef {
@@ -237,7 +240,7 @@ export interface Account {
   currency: string;
   /** For liabilities this is the amount owed (positive). */
   balance: MoneyString;
-  openingBalance: MoneyString;
+  openingBalance: MoneyString | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
   details: {

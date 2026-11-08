@@ -13,7 +13,7 @@ import type { AccountType, Connection } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Connections" };
 
-const SERVICE_LABEL = { mock_bank: "Bank", mock_loan: "Lender", mock_mortgage: "Mortgage lender" } as const;
+const SERVICE_LABEL = { mock_bank: "Bank", mock_loan: "Lender", mock_mortgage: "Mortgage lender", plaid: "Plaid bank" } as const;
 
 function DisconnectButton({ institutionId, name }: { institutionId: string; name: string }) {
   return (

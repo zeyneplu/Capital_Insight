@@ -6,7 +6,7 @@ from fastapi import Depends, Header, HTTPException, Request
 from .institutions import Institution
 from .sessions import Session, SessionStore
 from .upstream import UpstreamError, call
-from .dependencies import SessionDep as DatabaseDep
+from .dependencies import SessionDep as DatabaseDep, BearerDep, current_user
 from .identity import restore_connections
 
 
@@ -25,9 +25,19 @@ def registry(request: Request) -> dict[str, Institution]:
 def current_session(
     request: Request,
     database: DatabaseDep,
+    credentials: BearerDep,
     x_session_id: Annotated[str | None, Header(max_length=128)] = None,
 ) -> Session:
     session = store(request).get(x_session_id) if x_session_id else None
+    if credentials:
+        user = current_user(request, database, credentials)
+        if user.email_verified_at is None:
+            raise HTTPException(403, "Verify your email before accessing financial connections")
+        if session and (session.user_id != user.id or session.auth_session_id != request.state.session_token_id):
+            # Never attach one user's adapter cookie to another user's bearer.
+            session = None
+        if session is None:
+            session = store(request).for_auth_session(user.id, request.state.session_token_id)
     if session is None:
         raise HTTPException(401, "Missing or expired session. Create one with POST /api/v1/sessions.")
     if session.user_id:

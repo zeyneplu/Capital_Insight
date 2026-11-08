@@ -25,6 +25,7 @@ import type {
 } from "@/lib/types";
 import { LOAN_TYPES } from "@/lib/types";
 import { INSTITUTIONS } from "./fixtures/institutions";
+import { normalizePlaidAccount, normalizePlaidTransaction, type PlaidTransactionSnapshot, type PlaidAccountSnapshot } from "./plaid-normalize";
 import { normalizeAccount, normalizeLoanApplication, normalizeLoanOffer, normalizeMortgageApplication, normalizeTransaction } from "./normalize";
 import { DataSourceUnavailableError, type DataProvider, type Gated, type SubmitResult } from "./provider";
 
@@ -59,10 +60,11 @@ function baseUrl(): string {
 
 async function request(path: string, init: { method?: string; body?: unknown; sessionId?: string; token?: string } = {}): Promise<ApiResponse> {
   let response: Response;
+  const token = init.token ?? (path.startsWith("/api/v1/") ? await authToken() : undefined);
   try {
     response = await fetch(baseUrl() + path, {
       method: init.method ?? "GET",
-      headers: { "Content-Type": "application/json", ...(init.sessionId ? { "X-Session-Id": init.sessionId } : {}), ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}) },
+      headers: { "Content-Type": "application/json", ...(init.sessionId ? { "X-Session-Id": init.sessionId } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store", // customer-specific: never in a shared cache
     });
@@ -127,9 +129,9 @@ function metadata(institution: Pick<BackendInstitution, "id" | "name" | "service
 /** Institutions with this session's status. Without a session, everything is disconnected. */
 async function institutions(): Promise<{ sessionId?: string; items: BackendInstitution[] }> {
   const sessionId = await readSessionId();
-  if (sessionId) {
+  if (sessionId || await authToken()) {
     const response = await request("/api/v1/institutions", { sessionId });
-    if (response.status === 200) return { sessionId, items: response.body as BackendInstitution[] };
+    if (response.status === 200) return { sessionId: response.headers.get("X-Session-Id") ?? sessionId, items: response.body as BackendInstitution[] };
     if (response.status !== 401) expect(response, 200);
   }
   // No (or expired) session: list institutions as disconnected using known metadata.
@@ -151,13 +153,45 @@ function complete<T>(body: { items: T[]; errors: { institution_id: string; statu
   return body.items;
 }
 
+interface SavedPlaidConnection { id: string; kind: string; display_name: string }
+
 async function loadAccounts(type?: string): Promise<{ accounts: Account[]; context: Awaited<ReturnType<typeof institutions>> }> {
   const context = await institutions();
-  if (!context.sessionId || !context.items.some((i) => i.connected && i.service === "mock_bank")) return { accounts: [], context };
-  const query = type ? `?account_type=${encodeURIComponent(type)}` : "";
-  const raw = complete(expect<{ items: RawAccount[]; errors: [] }>(await request(`/api/v1/accounts${query}`, { sessionId: context.sessionId }), 200));
-  const byId = new Map(context.items.map((i) => [i.id, summaryOf(i)]));
-  return { accounts: raw.filter((a) => byId.has(a.institution_id)).map((a) => normalizeAccount(a, byId.get(a.institution_id)!)), context };
+  let accounts: Account[] = [];
+  if (context.sessionId && context.items.some((i) => i.connected && i.service === "mock_bank")) {
+    const raw = complete(expect<{ items: RawAccount[]; errors: [] }>(await request("/api/v1/accounts", { sessionId: context.sessionId }), 200));
+    const byId = new Map(context.items.map((i) => [i.id, summaryOf(i)]));
+    accounts = raw.filter((a) => byId.has(a.institution_id)).map((a) => normalizeAccount(a, byId.get(a.institution_id)!));
+  }
+  const token = await authToken();
+  if (token) {
+    const links = expect<SavedPlaidConnection[]>(await request("/v1/connections", {token}), 200).filter(link => link.kind === "plaid");
+    const snapshots = await Promise.all(links.map(async link => ({
+      link,
+      accounts: expect<PlaidAccountSnapshot[]>(await request(`/v1/plaid/connections/${encodeURIComponent(link.id)}/accounts`, {token}), 200),
+    })));
+    for (const snapshot of snapshots) {
+      const institution: InstitutionSummary = {id: snapshot.link.id, name: snapshot.link.display_name, service: "plaid"};
+      const fetchedAt = new Date().toISOString();
+      accounts.push(...snapshot.accounts.map(raw => normalizePlaidAccount(raw, institution, fetchedAt)).filter((a): a is Account => a !== null));
+      context.items.push({...institution, connected: true, customer: null});
+    }
+  }
+  return { accounts: type ? accounts.filter(account => account.type === type) : accounts, context };
+}
+
+async function plaidTransactions(connectionId: string): Promise<PlaidTransactionSnapshot[]> {
+  const token = await authToken();
+  const items: PlaidTransactionSnapshot[] = [];
+  let total = 0;
+  do {
+    const page = expect<{items:PlaidTransactionSnapshot[];total:number}>(await request(
+      `/v1/plaid/connections/${encodeURIComponent(connectionId)}/transactions?limit=100&offset=${items.length}`, {token}), 200);
+    items.push(...page.items);
+    total = page.total;
+    if (!page.items.length) break;
+  } while (items.length < total);
+  return items;
 }
 
 type LenderId = "loans" | "mortgages";
@@ -222,6 +256,9 @@ export const httpProvider: DataProvider = {
       ? complete(expect<{ items: RawTransaction[]; errors: [] }>(await request("/api/v1/transactions", { sessionId: context.sessionId }), 200))
       : [];
     const byAccount = new Map(accounts.map((a) => [a.id, a]));
+    const plaidIds = [...new Set(accounts.filter(a => a.source.service === "plaid").map(a => a.institution.id))];
+    const plaidRows = (await Promise.all(plaidIds.map(plaidTransactions))).flat();
+    const normalizedPlaidRows = plaidRows.filter(t => byAccount.has(t.account_id)).map(t => normalizePlaidTransaction(t, byAccount.get(t.account_id)!));
     const [loans, mortgages] = await Promise.all([lenderApplications("loans"), lenderApplications("mortgages")]);
     // "As of" = the newest balance timestamp the banks reported.
     const snapshotDate = accounts.reduce((latest, a) => (a.updatedAt.slice(0, 10) > latest ? a.updatedAt.slice(0, 10) : latest), "0000-00-00");
@@ -233,7 +270,7 @@ export const httpProvider: DataProvider = {
     return buildDashboard({
       snapshotDate: snapshotDate === "0000-00-00" ? new Date().toISOString().slice(0, 10) : snapshotDate,
       accounts,
-      transactions: transactions.filter((t) => byAccount.has(t.account_id)).map((t) => normalizeTransaction(t, byAccount.get(t.account_id)!)),
+      transactions: [...transactions.filter((t) => byAccount.has(t.account_id)).map((t) => normalizeTransaction(t, byAccount.get(t.account_id)!)), ...normalizedPlaidRows],
       loans: loans.connected ? (loans.data as LoanApplication[]) : [],
       mortgages: mortgages.connected ? (mortgages.data as MortgageApplication[]) : [],
       connectedInstitutions: context.items.filter((i) => i.connected).map(summaryOf),
@@ -303,17 +340,25 @@ export const httpProvider: DataProvider = {
 
   async getAccount(accountId) {
     const { accounts } = await loadAccounts();
-    return accounts.find((account) => account.id === accountId) ?? null;
+    // Composite Plaid IDs contain a colon; dynamic route params can retain its URL encoding.
+    return accounts.find((account) => account.id === accountId || encodeURIComponent(account.id) === accountId) ?? null;
   },
 
   async listTransactions(accountId, filters) {
     const account = await httpProvider.getAccount(accountId);
-    const sessionId = await readSessionId();
-    if (!account || !sessionId) return null;
+    if (!account) return null;
+    const sessionId = (await institutions()).sessionId;
+    if (!sessionId) return null;
     const query = new URLSearchParams({ limit: String(filters.limit), offset: String(filters.offset) });
     if (filters.startDate) query.set("start_date", filters.startDate);
     if (filters.endDate) query.set("end_date", filters.endDate);
     if (filters.category) query.set("category", filters.category);
+    if (account.source.service === "plaid") {
+      const items = (await plaidTransactions(account.institution.id)).filter(t => t.account_id === accountId)
+        .map(t => normalizePlaidTransaction(t, account))
+        .filter(t => (!filters.startDate || t.date >= filters.startDate) && (!filters.endDate || t.date <= filters.endDate) && (!filters.category || t.category === filters.category));
+      return {total:items.length, limit:filters.limit, offset:filters.offset, items:items.slice(filters.offset,filters.offset+filters.limit)};
+    }
     const response = await request(`/api/v1/accounts/${encodeURIComponent(accountId)}/transactions?${query}`, { sessionId });
     if (response.status === 404) return null;
     const page = expect<RawTransactionPage>(response, 200);

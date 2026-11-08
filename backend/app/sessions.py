@@ -62,3 +62,11 @@ class SessionStore:
             return None
         session.last_seen = time.time()
         return session
+
+    def for_auth_session(self, user_id: str, auth_session_id: str) -> Session:
+        self._prune()
+        for session in self._sessions.values():
+            if session.user_id == user_id and session.auth_session_id == auth_session_id:
+                session.last_seen = time.time()
+                return session
+        return self.create(user_id, auth_session_id)

@@ -139,6 +139,47 @@ def test_exchange_encrypts_access_token_and_never_returns_it(plaid_context):
     assert "encrypted_token" not in response.text
 
 
+def test_plaid_exchange_preserves_mock_links_and_adapter_recovers_after_restart(plaid_context):
+    from datetime import timedelta
+    from backend.app.models import User
+    from backend.app.database import utcnow
+    app, client, headers, _ = plaid_context
+    with app.state.session_factory() as database:
+        user = database.scalar(select(User))
+        database.add(Connection(user_id=user.id, provider="pnc", kind="mock_bank", remote_id="pnc-customer",
+            display_name="PNC Mock Bank", customer_profile={"id":"pnc-customer","email":user.email},
+            encrypted_token=app.state.cipher.encrypt(b"mock-pnc-token").decode(),
+            expires_at=utcnow()+timedelta(hours=1)))
+        database.commit()
+    old_sid = client.post("/api/v1/sessions", headers=headers).json()["session_id"]
+    connection_id = connect(client, headers)
+    # Simulate the core restarting: app bearer and saved connections survive, adapter memory does not.
+    app.state.sessions._sessions.clear()
+    response = client.get("/api/v1/institutions", headers={**headers,"X-Session-Id":old_sid})
+    assert response.status_code == 200
+    assert next(item for item in response.json() if item["id"] == "pnc")["connected"]
+    recovered_sid = response.headers["X-Session-Id"]
+    assert recovered_sid != old_sid
+    again = client.get("/api/v1/institutions",headers=headers)
+    assert again.headers["X-Session-Id"] == recovered_sid
+    # The Plaid Item and mock link are independently retained.
+    assert len(client.get("/v1/connections",headers=headers).json()) == 2
+    accounts = client.get("/v1/accounts",headers=headers,params={"connection_id":connection_id})
+    assert accounts.status_code == 200 and len(accounts.json()["items"]) == 1
+    assert accounts.json()["items"][0]["provider"] == "plaid"
+    other = client.post("/v1/auth/register", json={"email":"other-plaid@example.test","password":"another-fictional-password"}).json()
+    with app.state.session_factory() as database:
+        database.scalar(select(User).where(User.email == "other-plaid@example.test")).email_verified_at = utcnow()
+        database.commit()
+    other_headers = {"Authorization":"Bearer " + other["access_token"], "X-Session-Id":recovered_sid}
+    other_institutions = client.get("/api/v1/institutions",headers=other_headers)
+    assert other_institutions.status_code == 200
+    assert not any(item["connected"] for item in other_institutions.json())
+    assert other_institutions.headers["X-Session-Id"] != recovered_sid
+    client.post("/v1/auth/logout",headers=headers)
+    assert client.get("/api/v1/institutions",headers={**headers,"X-Session-Id":recovered_sid}).status_code == 401
+
+
 def test_accounts_preserve_decimal_precision_nulls_and_debt_semantics(plaid_context):
     app, client, headers, stub = plaid_context
     connection_id = connect(client, headers)

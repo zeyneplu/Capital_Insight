@@ -51,7 +51,7 @@ function AccountSummary({ account }: { account: Account }) {
               details.maturityDate ? { label: "Matures", value: formatDate(details.maturityDate) } : null,
               details.accountValue ? { label: "Account value", value: formatMoney(details.accountValue) } : null,
               details.subtype ? { label: "Subtype", value: details.subtype[0].toUpperCase() + details.subtype.slice(1) } : null,
-              { label: "Opening balance", value: `${formatMoney(account.openingBalance)} on ${formatDate(account.createdAt)}` },
+              { label: "Opening balance", value: account.openingBalance === null ? "Not provided by institution" : `${formatMoney(account.openingBalance)} on ${formatDate(account.createdAt)}` },
             ]}
           />
         </div>

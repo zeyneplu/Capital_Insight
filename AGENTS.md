@@ -210,3 +210,9 @@ The Connections page supports Plaid Link; `/banks` shows Plaid accounts for the 
 ## Independent institution verification (supersedes recipient forwarding above)
 
 `MOCK_EMAIL_RECIPIENT_MODE=customer` is now the default. Each institution sends consent codes to its own database customer's email and verifies them itself. The core forwards only the institution email, then the returned code; no internal key or recipient override is sent. Institutions reject recipient overrides in customer mode. Configure each deployed service's SMTP credentials and database independently; the root `.env.mail` is only a local convenience. Legacy forwarding requires explicit `forwarded_demo` mode on both ends. See DISTRIBUTED_EMAIL.md and EMAIL_SETUP.md.
+
+## Plaid and mock connections coexist
+
+Frontend `/api/v1` requests send the app bearer as well as the adapter session cookie. The backend recovers adapter sessions from persistent user connections when its in-memory state is lost, returns the current adapter ID in `X-Session-Id`, and validates the app session before restoring any links. Do not show all providers as disconnected solely because an adapter cookie is stale. Expired institution consents still require reconnection.
+
+HTTP account and overview pages combine mock accounts with Plaid snapshots. `plaid-normalize.ts` rounds Plaid amounts to cents using exact integer arithmetic for portfolio calculations; API snapshots retain original precision. The USD portfolio excludes unknown balances and other currencies; `/banks` shows all Plaid accounts. Opening balances and loan details unavailable from Plaid remain null. Plaid cached transactions are read separately from mock history. A successful Link exchange attempts transaction sync, and `/banks` provides a refresh action. Failures from a separate mock provider must not hide Plaid accounts on `/banks`.
