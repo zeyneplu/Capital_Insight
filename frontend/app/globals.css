@@ -1,26 +1,112 @@
 @import "tailwindcss";
 
+/*
+ * Capital Insight working visual style. No design system has been approved
+ * yet, so every color is a token here: swap values in one place later.
+ * Chart series colors are the validated data-viz reference slots 1-2
+ * (colorblind-safe in light and dark).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  color-scheme: light;
+  --background: #f6f6f4;
+  --surface: #ffffff;
+  --surface-muted: #f0efec;
+  --border: #e2e1dc;
+  --border-strong: #c9c8c1;
+  --text: #16161a;
+  --text-muted: #55554f;
+  --primary: #1c5cab;
+  --primary-hover: #184f95;
+  --primary-contrast: #ffffff;
+  --primary-soft: #e6effa;
+  --focus: #1c5cab;
+  --good-text: #1a6b2c;
+  --good-soft: #e5f4e7;
+  --warn-text: #7a4b00;
+  --warn-soft: #fdf1d8;
+  --bad-text: #b42318;
+  --bad-soft: #fde8e6;
+  --demo-text: #5b3a9e;
+  --demo-soft: #efe9fb;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --grid: #e9e8e3;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --background: #121211;
+    --surface: #1a1a19;
+    --surface-muted: #24241f;
+    --border: #2f2f2b;
+    --border-strong: #46463f;
+    --text: #f0efec;
+    --text-muted: #b5b4ab;
+    --primary: #6da7ec;
+    --primary-hover: #86b6ef;
+    --primary-contrast: #0d1726;
+    --primary-soft: #1b2a3d;
+    --focus: #86b6ef;
+    --good-text: #7fd28f;
+    --good-soft: #17301c;
+    --warn-text: #f2c766;
+    --warn-soft: #33280f;
+    --bad-text: #ff9a8f;
+    --bad-soft: #3a1b18;
+    --demo-text: #c9b6f5;
+    --demo-soft: #2a2140;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --grid: #2a2a26;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-contrast: var(--primary-contrast);
+  --color-primary-soft: var(--primary-soft);
+  --color-good: var(--good-text);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn-text);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad-text);
+  --color-bad-soft: var(--bad-soft);
+  --color-demo: var(--demo-text);
+  --color-demo-soft: var(--demo-soft);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-grid: var(--grid);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+/* One visible, high-contrast focus style for every interactive element. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

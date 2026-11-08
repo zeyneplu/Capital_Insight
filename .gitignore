@@ -16,6 +16,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# The Python template ignores every lib/ folder; the Next.js app keeps source code in frontend/lib.
+!frontend/lib/
 lib64/
 parts/
 sdist/

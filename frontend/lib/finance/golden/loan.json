@@ -1,0 +1,320 @@
+[
+ {
+  "input": {
+   "loan_type": "personal_loan",
+   "amount": "10000.00",
+   "term_months": 36,
+   "annual_income": "90000.00",
+   "existing_monthly_debt": "300.00",
+   "credit_score": 690
+  },
+  "status": "approved",
+  "decision_reason": "Meets the fictional score and debt-to-income rules",
+  "apr": "0.0990",
+  "monthly_payment": "322.20",
+  "schedule_len": 36,
+  "schedule_sample": [
+   {
+    "installment": 1,
+    "due_date": "2024-02-29",
+    "payment": "322.20",
+    "principal": "239.70",
+    "interest": "82.50",
+    "remaining_balance": "9760.30"
+   },
+   {
+    "installment": 2,
+    "due_date": "2024-03-31",
+    "payment": "322.20",
+    "principal": "241.68",
+    "interest": "80.52",
+    "remaining_balance": "9518.62"
+   },
+   {
+    "installment": 3,
+    "due_date": "2024-04-30",
+    "payment": "322.20",
+    "principal": "243.67",
+    "interest": "78.53",
+    "remaining_balance": "9274.95"
+   },
+   {
+    "installment": 35,
+    "due_date": "2026-12-31",
+    "payment": "322.20",
+    "principal": "316.95",
+    "interest": "5.25",
+    "remaining_balance": "319.67"
+   },
+   {
+    "installment": 36,
+    "due_date": "2027-01-31",
+    "payment": "322.31",
+    "principal": "319.67",
+    "interest": "2.64",
+    "remaining_balance": "0.00"
+   }
+  ],
+  "total_interest": "1599.31"
+ },
+ {
+  "input": {
+   "loan_type": "auto_loan",
+   "amount": "25000.00",
+   "term_months": 60,
+   "annual_income": "90000.00",
+   "existing_monthly_debt": "300.00",
+   "credit_score": 690
+  },
+  "status": "approved",
+  "decision_reason": "Meets the fictional score and debt-to-income rules",
+  "apr": "0.0650",
+  "monthly_payment": "489.15",
+  "schedule_len": 60,
+  "schedule_sample": [
+   {
+    "installment": 1,
+    "due_date": "2024-02-29",
+    "payment": "489.15",
+    "principal": "353.73",
+    "interest": "135.42",
+    "remaining_balance": "24646.27"
+   },
+   {
+    "installment": 2,
+    "due_date": "2024-03-31",
+    "payment": "489.15",
+    "principal": "355.65",
+    "interest": "133.50",
+    "remaining_balance": "24290.62"
+   },
+   {
+    "installment": 3,
+    "due_date": "2024-04-30",
+    "payment": "489.15",
+    "principal": "357.58",
+    "interest": "131.57",
+    "remaining_balance": "23933.04"
+   },
+   {
+    "installment": 59,
+    "due_date": "2028-12-31",
+    "payment": "489.15",
+    "principal": "483.89",
+    "interest": "5.26",
+    "remaining_balance": "486.71"
+   },
+   {
+    "installment": 60,
+    "due_date": "2029-01-31",
+    "payment": "489.35",
+    "principal": "486.71",
+    "interest": "2.64",
+    "remaining_balance": "0.00"
+   }
+  ],
+  "total_interest": "4349.20"
+ },
+ {
+  "input": {
+   "loan_type": "auto_loan",
+   "amount": "40000.00",
+   "term_months": 72,
+   "annual_income": "60000.00",
+   "existing_monthly_debt": "400.00",
+   "credit_score": 600
+  },
+  "status": "declined",
+  "decision_reason": "Mock credit score threshold is 620",
+  "apr": "0.0650",
+  "monthly_payment": "672.40",
+  "schedule_len": 72,
+  "schedule_sample": [
+   {
+    "installment": 1,
+    "due_date": "2024-02-29",
+    "payment": "672.40",
+    "principal": "455.73",
+    "interest": "216.67",
+    "remaining_balance": "39544.27"
+   },
+   {
+    "installment": 2,
+    "due_date": "2024-03-31",
+    "payment": "672.40",
+    "principal": "458.20",
+    "interest": "214.20",
+    "remaining_balance": "39086.07"
+   },
+   {
+    "installment": 3,
+    "due_date": "2024-04-30",
+    "payment": "672.40",
+    "principal": "460.68",
+    "interest": "211.72",
+    "remaining_balance": "38625.39"
+   },
+   {
+    "installment": 71,
+    "due_date": "2029-12-31",
+    "payment": "672.40",
+    "principal": "665.18",
+    "interest": "7.22",
+    "remaining_balance": "668.56"
+   },
+   {
+    "installment": 72,
+    "due_date": "2030-01-31",
+    "payment": "672.18",
+    "principal": "668.56",
+    "interest": "3.62",
+    "remaining_balance": "0.00"
+   }
+  ],
+  "total_interest": "8412.58"
+ },
+ {
+  "input": {
+   "loan_type": "personal_loan",
+   "amount": "50000.00",
+   "term_months": 12,
+   "annual_income": "40000.00",
+   "existing_monthly_debt": "0.00",
+   "credit_score": 800
+  },
+  "status": "declined",
+  "decision_reason": "Mock monthly debt-to-income limit is 40%",
+  "apr": "0.0990",
+  "monthly_payment": "4393.47",
+  "schedule_len": 12,
+  "schedule_sample": [
+   {
+    "installment": 1,
+    "due_date": "2024-02-29",
+    "payment": "4393.47",
+    "principal": "3980.97",
+    "interest": "412.50",
+    "remaining_balance": "46019.03"
+   },
+   {
+    "installment": 2,
+    "due_date": "2024-03-31",
+    "payment": "4393.47",
+    "principal": "4013.81",
+    "interest": "379.66",
+    "remaining_balance": "42005.22"
+   },
+   {
+    "installment": 3,
+    "due_date": "2024-04-30",
+    "payment": "4393.47",
+    "principal": "4046.93",
+    "interest": "346.54",
+    "remaining_balance": "37958.29"
+   },
+   {
+    "installment": 11,
+    "due_date": "2024-12-31",
+    "payment": "4393.47",
+    "principal": "4321.87",
+    "interest": "71.60",
+    "remaining_balance": "4357.50"
+   },
+   {
+    "installment": 12,
+    "due_date": "2025-01-31",
+    "payment": "4393.45",
+    "principal": "4357.50",
+    "interest": "35.95",
+    "remaining_balance": "0.00"
+   }
+  ],
+  "total_interest": "2721.62"
+ },
+ {
+  "input": {
+   "loan_type": "mortgage",
+   "amount": "333333.33",
+   "term_months": 360,
+   "annual_income": "200000.00",
+   "existing_monthly_debt": "1000.00",
+   "credit_score": 760
+  },
+  "status": "approved",
+  "decision_reason": "Meets the fictional score and debt-to-income rules",
+  "apr": "0.0625",
+  "monthly_payment": "2052.39",
+  "schedule_len": 360,
+  "schedule_sample": [
+   {
+    "installment": 1,
+    "due_date": "2024-02-29",
+    "payment": "2052.39",
+    "principal": "316.28",
+    "interest": "1736.11",
+    "remaining_balance": "333017.05"
+   },
+   {
+    "installment": 2,
+    "due_date": "2024-03-31",
+    "payment": "2052.39",
+    "principal": "317.93",
+    "interest": "1734.46",
+    "remaining_balance": "332699.12"
+   },
+   {
+    "installment": 3,
+    "due_date": "2024-04-30",
+    "payment": "2052.39",
+    "principal": "319.58",
+    "interest": "1732.81",
+    "remaining_balance": "332379.54"
+   },
+   {
+    "installment": 359,
+    "due_date": "2053-12-31",
+    "payment": "2052.39",
+    "principal": "2031.17",
+    "interest": "21.22",
+    "remaining_balance": "2042.24"
+   },
+   {
+    "installment": 360,
+    "due_date": "2054-01-31",
+    "payment": "2052.88",
+    "principal": "2042.24",
+    "interest": "10.64",
+    "remaining_balance": "0.00"
+   }
+  ],
+  "total_interest": "405527.56"
+ },
+ {
+  "input": {
+   "loan_type": "personal_loan",
+   "amount": "999.00",
+   "term_months": 36,
+   "annual_income": "90000.00",
+   "existing_monthly_debt": "0",
+   "credit_score": 700
+  },
+  "error": {
+   "status": 422,
+   "detail": "Amount is outside this product's advertised range"
+  }
+ },
+ {
+  "input": {
+   "loan_type": "personal_loan",
+   "amount": "5000.00",
+   "term_months": 30,
+   "annual_income": "90000.00",
+   "existing_monthly_debt": "0",
+   "credit_score": 700
+  },
+  "error": {
+   "status": 422,
+   "detail": "Choose a term advertised for this product"
+  }
+ }
+]
