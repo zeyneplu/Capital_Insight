@@ -2,6 +2,7 @@
 
     python scripts/dev.py            # services + core API + frontend (live mode)
     python scripts/dev.py --no-web   # services + core API only
+    python scripts/dev.py --prod     # production frontend build (next build + next start)
 
 Starts the six mock services (DEMO_MODE=true), the core API on :8000 and,
 if frontend/node_modules exists, `npm run dev` with DATA_SOURCE=http.
@@ -100,6 +101,8 @@ def main() -> int:
     parser.add_argument("--no-web", action="store_true", help="do not start the Next.js frontend")
     parser.add_argument("--api-port", type=int, default=8000)
     parser.add_argument("--web-port", type=int, default=3000)
+    parser.add_argument("--prod", action="store_true",
+                        help="build the frontend and serve it with `next start` instead of the dev server")
     args = parser.parse_args()
     if not all(1 <= port <= 65535 for port in (args.api_port, args.web_port)):
         parser.error("Ports must be between 1 and 65535")
@@ -125,8 +128,19 @@ def main() -> int:
     npm = shutil.which("npm")
     if not args.no_web:
         if npm and (ROOT / "frontend" / "node_modules").exists():
-            stack.append({"name": "frontend", "cwd": ROOT / "frontend", "cmd": [shutil.which("node"), str(ROOT / "frontend" / "node_modules" / "next" / "dist" / "bin" / "next"), "dev", "--port", str(args.web_port)],
-                          "env": {"DATA_SOURCE": "http", "BACKEND_API_URL": f"http://localhost:{args.api_port}"},
+            next_bin = [shutil.which("node"), str(ROOT / "frontend" / "node_modules" / "next" / "dist" / "bin" / "next")]
+            web_env = {"DATA_SOURCE": "http", "BACKEND_API_URL": f"http://localhost:{args.api_port}"}
+            if args.prod:
+                print("Building the production frontend (next build)…")
+                build = subprocess.run([*next_bin, "build"], cwd=ROOT / "frontend", env={**os.environ, **web_env},
+                                       capture_output=True, text=True, encoding="utf-8", errors="replace")
+                (LOGS / "frontend-build.log").write_text(build.stdout + build.stderr, encoding="utf-8")
+                if build.returncode != 0:
+                    print("Frontend build failed. See logs/frontend-build.log")
+                    return 1
+            stack.append({"name": "frontend", "cwd": ROOT / "frontend",
+                          "cmd": [*next_bin, "start" if args.prod else "dev", "--port", str(args.web_port)],
+                          "env": {**web_env, **({"NODE_ENV": "production"} if args.prod else {})},
                           "health": f"http://localhost:{args.web_port}"})
         else:
             print("Frontend skipped: run `npm ci` in frontend/ first (and make sure Node.js is installed).")

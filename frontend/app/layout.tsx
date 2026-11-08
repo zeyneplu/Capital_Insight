@@ -1,6 +1,7 @@
 import { AccountStatus } from "@/components/auth/account-status";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { MobileMenu } from "@/components/shell/mobile-menu";
@@ -29,10 +30,8 @@ export const metadata: Metadata = {
 
 function Brand() {
   return (
-    <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-      <span aria-hidden="true" className="grid size-8 place-items-center rounded-lg bg-primary text-sm text-primary-contrast">
-        CI
-      </span>
+    <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
+      <Image src="/logo-mark.png" alt="" width={32} height={32} priority className="size-8 rounded-[9px] shadow-sm shadow-indigo-500/30" />
       Capital Insight
     </Link>
   );
@@ -47,11 +46,7 @@ function DataSourceBanner() {
         <span>Fictional records, fixed snapshot of {formatDate(SNAPSHOT_DATE)}. Connections and applications are simulated.</span>
       </p>
     </div>
-  ) : (
-    <div className="border-b border-border bg-surface-muted px-4 py-2 text-xs text-muted sm:text-sm">
-      <p className="mx-auto max-w-7xl">Live data source: Capital Insight backend.</p>
-    </div>
-  );
+  ) : null;
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -88,14 +83,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </div>
         <footer className="border-t border-border bg-surface">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              HackUTD 2026 demo. All institutions, people and records are fictional. Nothing here is financial advice, and no money moves.
+            <p className="flex items-center gap-2.5">
+              <Image src="/logo-mark.png" alt="" width={20} height={20} className="size-5 rounded-md" />
+              <span>© 2026 Capital Insight · HackUTD 2026. Institutions and records are fictional. Not financial advice; no money moves.</span>
             </p>
-            <form action={resetDemoAction}>
-              <button type="submit" className="font-medium text-primary underline-offset-4 hover:underline">
-                Reset demo session
-              </button>
-            </form>
+            {dataSourceKind() === "mock" ? (
+              <form action={resetDemoAction}>
+                <button type="submit" className="font-medium text-primary underline-offset-4 hover:underline">
+                  Reset demo session
+                </button>
+              </form>
+            ) : null}
           </div>
         </footer>
       </body>

@@ -44,7 +44,7 @@ export async function signInAction(previous: SignInState, form: FormData): Promi
       : `Cannot reach the Capital Insight backend at ${base}. Is python scripts/dev.py running?`;
     return {step:previous.step,email,error};
   }
-  redirect("/connect");
+  redirect("/");
 }
 
 export async function signOutAction() {

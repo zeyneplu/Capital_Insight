@@ -4,8 +4,9 @@ import { CreditScoreCard } from "./credit-score-card";
 import { PlanningWidgets } from "./planning-widgets";
 import { ColumnChart, RankedBars } from "@/components/charts/bars";
 import { Money } from "@/components/ui/money";
-import { Badge, ButtonLink, Card, EmptyState, LoadingBlock, Skeleton, StatTile, TextLink } from "@/components/ui/primitives";
+import { Alert, Badge, ButtonLink, Card, EmptyState, LoadingBlock, Skeleton, StatTile, TextLink } from "@/components/ui/primitives";
 import { getDataProvider } from "@/lib/data";
+import { sampleCreditScore, sampleDashboard } from "@/lib/data/mock-provider";
 import { toCents } from "@/lib/finance/money";
 import { ACCOUNT_TYPE_LABELS, CATEGORY_LABELS, formatDate, formatMonth, formatMoney, formatShortDate } from "@/lib/format";
 import type { BreakdownItem, Dashboard } from "@/lib/types";
@@ -16,16 +17,20 @@ function recordHref(item: BreakdownItem): string {
   return `/accounts/${encodeURIComponent(item.id)}`;
 }
 
-function BreakdownList({ items, emptyLabel }: { items: BreakdownItem[]; emptyLabel: string }) {
+function BreakdownList({ items, emptyLabel, sample = false }: { items: BreakdownItem[]; emptyLabel: string; sample?: boolean }) {
   if (items.length === 0) return <p className="text-sm text-muted">{emptyLabel}</p>;
   return (
     <ul className="divide-y divide-border">
       {items.map((item) => (
         <li key={item.id} className="flex items-center justify-between gap-3 py-2.5">
           <div className="min-w-0">
-            <Link href={recordHref(item)} className="block truncate text-sm font-medium hover:underline">
-              {item.label}
-            </Link>
+            {sample ? (
+              <span className="block truncate text-sm font-medium">{item.label}</span>
+            ) : (
+              <Link href={recordHref(item)} className="block truncate text-sm font-medium hover:underline">
+                {item.label}
+              </Link>
+            )}
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
               {item.institutionName} · {ACCOUNT_TYPE_LABELS[item.type]}
               {item.basisNote ? <Badge tone="demo">{item.basisNote}</Badge> : null}
@@ -69,7 +74,14 @@ function Obligations({ dashboard }: { dashboard: Dashboard }) {
 
 export async function DashboardContent() {
   const provider = getDataProvider();
-  const [dashboard, credit] = await Promise.all([provider.getDashboard(), provider.getCreditScore()]);
+  let [dashboard, credit] = await Promise.all([provider.getDashboard(), provider.getCreditScore()]);
+  // Live mode, signed in, nothing linked yet: show the clearly labeled sample portfolio
+  // instead of an empty page. Only an empty (successful) result does this; errors still surface.
+  const sample = provider.kind === "http" && dashboard.connectedInstitutions.length === 0;
+  if (sample) {
+    dashboard = sampleDashboard();
+    credit = sampleCreditScore();
+  }
 
   if (dashboard.connectedInstitutions.length === 0) {
     return (
@@ -87,6 +99,17 @@ export async function DashboardContent() {
 
   return (
     <div className="space-y-6">
+      {sample ? (
+        <Alert tone="demo" title="Demo data: your account has no linked institutions yet">
+          <p>
+            You are viewing a default sample portfolio of fictional accounts as of {formatDate(dashboard.snapshotDate)}. None of it belongs to you, and
+            nothing here reflects your finances. Connect a bank or lender to replace it with your own data.
+          </p>
+          <div className="mt-3">
+            <ButtonLink href="/connect" size="sm">Connect an institution</ButtonLink>
+          </div>
+        </Alert>
+      ) : null}
       <CreditScoreCard credit={credit} />
       <Suspense fallback={<Skeleton className="h-20" />}>
         <PlanningWidgets />
@@ -159,8 +182,8 @@ export async function DashboardContent() {
         </Card>
         <Card
           className="xl:col-span-2"
-          title="Connections"
-          action={<TextLink href="/connect" className="text-sm">Manage</TextLink>}
+          title={sample ? "Sample institutions" : "Connections"}
+          action={<TextLink href="/connect" className="text-sm">{sample ? "Connect yours" : "Manage"}</TextLink>}
         >
           <ul className="flex flex-wrap gap-2">
             {dashboard.connectedInstitutions.map((institution) => (
@@ -182,10 +205,10 @@ export async function DashboardContent() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="Assets" action={<Money value={dashboard.totals.assets} className="text-sm font-semibold" />}>
-          <BreakdownList items={dashboard.assets} emptyLabel="No asset accounts connected." />
+          <BreakdownList items={dashboard.assets} emptyLabel="No asset accounts connected." sample={sample} />
         </Card>
         <Card title="Liabilities" action={<Money value={dashboard.totals.liabilities} className="text-sm font-semibold" />}>
-          <BreakdownList items={dashboard.liabilities} emptyLabel="No cards or loans connected." />
+          <BreakdownList items={dashboard.liabilities} emptyLabel="No cards or loans connected." sample={sample} />
           {dashboard.liabilities.some((item) => item.basisNote) ? (
             <p className="mt-3 text-xs text-muted">
               Lender balances are a demo servicing snapshot: the lender APIs report only the original amount and a projected schedule.

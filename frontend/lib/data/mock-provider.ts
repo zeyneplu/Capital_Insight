@@ -32,7 +32,7 @@ import {
 } from "./fixtures/lending";
 import { normalizeAccount, normalizeLoanApplication, normalizeLoanOffer, normalizeMortgageApplication, normalizeTransaction } from "./normalize";
 import type { DataProvider, Gated, RequestCodeResult, SubmitResult, VerifyCodeResult } from "./provider";
-import { clearSession, readSession, writeSession, type DemoSession } from "./session";
+import { clearSession, defaultSession, readSession, writeSession, type DemoSession } from "./session";
 
 // Consent rules copied from the services' defaults (config.py).
 const CODE_TTL_MS = 5 * 60 * 1000;
@@ -112,6 +112,34 @@ function scheduleFor(application: LoanApplication | MortgageApplication | undefi
     createdAt: application.createdAt,
   });
   return { kind: "schedule", application, rows };
+}
+
+/**
+ * The full fixture portfolio (every demo institution connected), independent of any demo session.
+ * Used to show a clearly labeled sample to signed-in users whose account has no linked data yet.
+ */
+export function sampleDashboard() {
+  const session: DemoSession = { ...defaultSession(), connections: INSTITUTIONS.map((institution) => institution.id), loanApplications: [], mortgageApplications: [] };
+  const accounts = connectedAccounts(session);
+  return buildDashboard({
+    snapshotDate: SNAPSHOT_DATE,
+    accounts,
+    transactions: accounts.flatMap((account) => ALL_TRANSACTIONS.get(account.id) ?? []),
+    loans: loanRecords(session),
+    mortgages: mortgageRecords(session),
+    connectedInstitutions: INSTITUTIONS.map(summaryOf),
+    availableInstitutions: [],
+  });
+}
+
+export function sampleCreditScore(): Awaited<ReturnType<DataProvider["getCreditScore"]>> {
+  const banks = INSTITUTIONS.filter((institution) => institution.service === "mock_bank");
+  const customer = customerFor(banks[0].id);
+  return {
+    score: customer?.credit_score ?? null, minimum: 300, maximum: 850,
+    model: "Synthetic demo score v1", synthetic: true, as_of: customer?.credit_score_as_of ?? null,
+    sources: banks.map((institution) => institution.name), status: customer ? "available" : "connect_bank",
+  };
 }
 
 export const mockProvider: DataProvider = {

@@ -55,6 +55,14 @@ docker compose run --rm seed
 
 This copies synthetic accounts into the mock volumes, saves goals and preferences, and links all six institutions with the tester code. It is safe to rerun; rerun it before judging to refresh the 12-hour consents.
 
+## Real users on fresh volumes
+
+Mock institutions only email consent codes to customers they know, and they stay silent for unknown emails so they don't reveal who has an account. New Docker volumes contain only the synthetic seed customers. Register each real user's email once per set of volumes:
+
+```powershell
+docker compose run --rm --no-deps seed python scripts/add_demo_customer.py --email you@example.com
+```
+
 ## Everyday commands
 
 ```powershell
