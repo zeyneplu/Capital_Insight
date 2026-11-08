@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { buildSampleInsights } from "@/lib/finance/insights";
 import { buildDashboard } from "@/lib/finance/portfolio";
 import { validateLoanApplication, validateMortgageApplication, type FieldError } from "@/lib/finance/underwriting";
@@ -222,6 +223,11 @@ export const httpProvider: DataProvider = {
     const [loans, mortgages] = await Promise.all([lenderApplications("loans"), lenderApplications("mortgages")]);
     // "As of" = the newest balance timestamp the banks reported.
     const snapshotDate = accounts.reduce((latest, a) => (a.updatedAt.slice(0, 10) > latest ? a.updatedAt.slice(0, 10) : latest), "0000-00-00");
+    if (snapshotDate === "0000-00-00") {
+      // No balances yet: "as of" today. connection() makes this request-time,
+      // so Cache Components never bakes a build-time date into the page.
+      await connection();
+    }
     return buildDashboard({
       snapshotDate: snapshotDate === "0000-00-00" ? new Date().toISOString().slice(0, 10) : snapshotDate,
       accounts,
