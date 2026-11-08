@@ -1,0 +1,58 @@
+services:
+  chase:
+    build: .
+    ports:
+    - 8001:8000
+    environment:
+      BANK_ID: chase
+      BANK_NAME: Chase Mock Bank
+      DATABASE_URL: sqlite:///./data/chase.db
+      DATA_SEED: 101
+      DEMO_MODE: 'true'
+    volumes:
+    - chase_data:/service/data
+    restart: unless-stopped
+  amex:
+    build: .
+    ports:
+    - 8002:8000
+    environment:
+      BANK_ID: amex
+      BANK_NAME: American Express Mock Bank
+      DATABASE_URL: sqlite:///./data/amex.db
+      DATA_SEED: 202
+      DEMO_MODE: 'true'
+    volumes:
+    - amex_data:/service/data
+    restart: unless-stopped
+  pnc:
+    build: .
+    ports:
+    - 8003:8000
+    environment:
+      BANK_ID: pnc
+      BANK_NAME: PNC Mock Bank
+      DATABASE_URL: sqlite:///./data/pnc.db
+      DATA_SEED: 303
+      DEMO_MODE: 'true'
+    volumes:
+    - pnc_data:/service/data
+    restart: unless-stopped
+  discover:
+    build: .
+    ports:
+    - 8004:8000
+    environment:
+      BANK_ID: discover
+      BANK_NAME: Discover Mock Bank
+      DATABASE_URL: sqlite:///./data/discover.db
+      DATA_SEED: 404
+      DEMO_MODE: 'true'
+    volumes:
+    - discover_data:/service/data
+    restart: unless-stopped
+volumes:
+  chase_data: null
+  amex_data: null
+  pnc_data: null
+  discover_data: null
