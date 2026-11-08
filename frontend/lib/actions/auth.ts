@@ -34,7 +34,12 @@ export async function signInAction(previous: SignInState, form: FormData): Promi
     jar.set(AUTH_COOKIE,result.access_token,options);
     jar.set(ADAPTER_COOKIE,session_id,options);
   } catch {
-    return {step:previous.step,email,error:"The sign-in service is unavailable. Please try again."};
+    // Say what is wrong, so the user can fix it instead of retrying blindly.
+    const base = process.env.BACKEND_API_URL;
+    const error = !base
+      ? "Sign-in needs the live backend: start the app with python scripts/dev.py (demo mode has no accounts)."
+      : `Cannot reach the Capital Insight backend at ${base}. Is python scripts/dev.py running?`;
+    return {step:previous.step,email,error};
   }
   redirect("/connect");
 }
