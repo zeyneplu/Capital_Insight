@@ -82,7 +82,11 @@ def healthy(url: str) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--no-web", action="store_true", help="do not start the Next.js frontend")
+    parser.add_argument("--api-port", type=int, default=8000)
+    parser.add_argument("--web-port", type=int, default=3000)
     args = parser.parse_args()
+    if not all(1 <= port <= 65535 for port in (args.api_port, args.web_port)):
+        parser.error("Ports must be between 1 and 65535")
 
     if sys.version_info < (3, 10):
         print("Python 3.10+ is required (the services use modern type hints). Install it from python.org.")
@@ -97,13 +101,17 @@ def main() -> int:
     LOGS.mkdir(exist_ok=True)
     processes: list[tuple[str, subprocess.Popen]] = []
     stack = services()
+    for spec in stack:
+        if spec["name"] == "core-api":
+            spec["cmd"][-1] = str(args.api_port)
+            spec["health"] = f"http://localhost:{args.api_port}/health"
 
     npm = shutil.which("npm")
     if not args.no_web:
         if npm and (ROOT / "frontend" / "node_modules").exists():
-            stack.append({"name": "frontend", "cwd": ROOT / "frontend", "cmd": [npm, "run", "dev"],
-                          "env": {"DATA_SOURCE": "http", "BACKEND_API_URL": "http://localhost:8000"},
-                          "health": "http://localhost:3000"})
+            stack.append({"name": "frontend", "cwd": ROOT / "frontend", "cmd": [shutil.which("node"), str(ROOT / "frontend" / "node_modules" / "next" / "dist" / "bin" / "next"), "dev", "--port", str(args.web_port)],
+                          "env": {"DATA_SOURCE": "http", "BACKEND_API_URL": f"http://localhost:{args.api_port}"},
+                          "health": f"http://localhost:{args.web_port}"})
         else:
             print("Frontend skipped: run `npm ci` in frontend/ first (and make sure Node.js is installed).")
 
@@ -159,8 +167,8 @@ def main() -> int:
     for name in pending:
         print(f"  ? {name} not ready yet; see logs/{name}.log")
 
-    print("\nOpen http://localhost:3000 → Connections. Consent codes will appear here.\n"
-          "API docs: http://localhost:8000/docs   Stop everything: Ctrl+C\n")
+    print(f"\nOpen http://localhost:{args.web_port} → Connections. Consent codes will appear here.\n"
+          f"API docs: http://localhost:{args.api_port}/docs   Stop everything: Ctrl+C\n")
     while True:
         time.sleep(1)
 

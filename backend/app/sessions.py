@@ -22,7 +22,10 @@ class Connection:
 class Session:
     id: str
     last_seen: float
+    user_id: str | None = None
+    auth_session_id: str | None = None
     connections: dict[str, Connection] = field(default_factory=dict)
+    revoked: set[str] = field(default_factory=set)
 
     def active(self, institution_id: str) -> Connection | None:
         connection = self.connections.get(institution_id)
@@ -43,12 +46,12 @@ class SessionStore:
         for session_id in [sid for sid, s in self._sessions.items() if s.last_seen < cutoff]:
             del self._sessions[session_id]
 
-    def create(self) -> Session:
+    def create(self, user_id: str | None = None, auth_session_id: str | None = None) -> Session:
         self._prune()
         if len(self._sessions) >= self._max:
             oldest = min(self._sessions.values(), key=lambda s: s.last_seen)
             del self._sessions[oldest.id]
-        session = Session(id=secrets.token_urlsafe(32), last_seen=time.time())
+        session = Session(id=secrets.token_urlsafe(32), last_seen=time.time(), user_id=user_id, auth_session_id=auth_session_id)
         self._sessions[session.id] = session
         return session
 

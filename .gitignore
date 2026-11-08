@@ -208,3 +208,6 @@ yarn-error.log*
 *.tsbuildinfo
 # scripts/dev.py output
 logs/
+
+# Private SMTP configuration shared by local mock institutions
+.env.mail

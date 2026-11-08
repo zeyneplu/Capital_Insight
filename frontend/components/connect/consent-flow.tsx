@@ -110,14 +110,19 @@ export function ConsentFlow({
             {demoCode ? (
               <Alert tone="demo" title="Demo mode">
                 Use the fixture-only code <strong className="font-mono tracking-widest">{demoCode}</strong>. It never works against the live mock services,
-                which generate a random code and print it only in their own server logs.
+                which generate and deliver their own random code.
               </Alert>
-            ) : (
-              <Alert tone="info" title="Where is the code?">
-                Live mock services never email it. Run the service with <code className="font-mono">DEMO_MODE=true</code> and copy the six-digit
-                DEVELOPMENT ONLY code from that service&apos;s server log.
+            ) : state.delivery === "email" ? (
+              <Alert tone="info" title="Check your inbox">
+                The institution sends the code to the email registered on your account there. Check Spam if it has not arrived.
+                The address above identifies the selected fictional banking customer.
               </Alert>
-            )}
+            ) : state.delivery === "server_log" ? (
+              <Alert tone="info" title="Email delivery is not enabled">
+                This instance currently sends codes to its development server log. Configure Gmail or another SMTP
+                provider in the private <code className="font-mono">.env.mail</code> file to receive codes by email.
+              </Alert>
+            ) : null}
             <Field id="consent-code" label="Verification code" hint="Codes expire after 5 minutes and allow 5 attempts.">
               {(describedBy) => (
                 <Input

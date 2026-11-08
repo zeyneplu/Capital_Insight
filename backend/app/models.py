@@ -19,6 +19,7 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     password_hash: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
@@ -48,6 +49,7 @@ class Connection(Base):
     kind: Mapped[str] = mapped_column(String(32))
     remote_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str] = mapped_column(String(255))
+    customer_profile: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     encrypted_token: Mapped[str] = mapped_column(Text)
     expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
@@ -74,3 +76,14 @@ class PlaidState(Base):
         ForeignKey("connections.id", ondelete="CASCADE"), primary_key=True
     )
     cursor: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class EmailChallenge(Base):
+    # Email is the natural primary key of the verification identity.
+    __tablename__ = "email_challenges"
+    email: Mapped[str] = mapped_column(String(254), primary_key=True)
+    encrypted_code: Mapped[str] = mapped_column(Text)
+    requested_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    attempts: Mapped[int] = mapped_column(default=0)
+    used: Mapped[bool] = mapped_column(default=False)

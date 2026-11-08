@@ -86,3 +86,8 @@ The container listens on 8000 and host port 8005. A dedicated named volume persi
 Configuration: LENDER_ID=loans, LENDER_NAME=Capital Insight Mock Loans, DATABASE_URL=sqlite:///./data/loans.db, DATA_SEED=505, SEED_DATE=2026-11-01. Authentication settings: DEMO_MODE (false by default), CODE_TTL_SECONDS=300, CODE_ATTEMPT_LIMIT=5, REQUEST_COOLDOWN_SECONDS=30, TOKEN_TTL_SECONDS=1800. An optional SIGNING_SECRET must have at least 32 characters; otherwise a per-lender random secret persists in SQLite. Never share database files between lenders. No SSNs or actual customer records are used.
 
 Run both service test suites from the repository root with `python -m pytest services/mock_bank/tests services/mock_loan/tests -q`. From this service directory, use `python -m pytest tests -q`.
+
+
+## Optional real email codes
+
+See [EMAIL_SETUP.md](../../EMAIL_SETUP.md) for free Gmail SMTP setup. Configure the repository-root private `.env.mail`, then restart this service. SMTP mode sends fictional customers' codes to the configured real demo inbox and suppresses code logging. Default log-only behavior remains available.

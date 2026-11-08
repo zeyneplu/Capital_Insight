@@ -1,3 +1,5 @@
+import { VerifiedConnections } from "@/components/connect/verified-connections";
+import { dataSourceKind } from "@/lib/data";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -135,7 +137,7 @@ async function ConnectContent({ searchParams }: { searchParams: Promise<SearchPa
         ))}
       </ul>
       <Alert tone="demo" title="How this demo stores connections">
-        Connections and simulated applications are kept in a cookie in this browser for up to 7 days (the 5 most recent applications per lender).
+        In fixture mode, demo connections and applications stay in a browser cookie. In HTTP mode, verified-user connections are saved in the application database. Institution consent may expire and require reconnection.
         Use “Reset demo session” in the footer to start over.
       </Alert>
     </div>
@@ -145,7 +147,8 @@ async function ConnectContent({ searchParams }: { searchParams: Promise<SearchPa
 export default function ConnectPage({ searchParams }: PageProps<"/connect">) {
   return (
     <>
-      <PageHeader title="Connections" description="Connect mock banks and lenders with a simulated consent flow. Nothing here signs in to a real institution." />
+      <PageHeader title="Connections" description="Verify your email, authorize banks through Plaid, or explore fictional accounts through a mock connection." />
+      {dataSourceKind() === "http" ? <div className="mb-6"><Suspense fallback={<p>Checking your sign-in...</p>}><VerifiedConnections /></Suspense></div> : null}
       <Suspense
         fallback={
           <LoadingBlock label="Loading institutions">

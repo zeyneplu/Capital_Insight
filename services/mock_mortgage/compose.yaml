@@ -1,5 +1,8 @@
 services:
   mock-mortgage:
+    env_file:
+      - path: ../../.env.mail
+        required: false
     build: .
     ports:
       - "8006:8000"

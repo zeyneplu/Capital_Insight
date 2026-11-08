@@ -17,8 +17,10 @@ class UpstreamError(Exception):
 
 
 async def call(client: httpx.AsyncClient, institution: Institution, method: str, path: str,
-               token: str | None = None, **kwargs: Any) -> Any:
+               token: str | None = None, internal_key: str | None = None, **kwargs: Any) -> Any:
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    if internal_key:
+        headers["X-Internal-Key"] = internal_key
     try:
         response = await client.request(method, institution.base_url.rstrip("/") + path, headers=headers, **kwargs)
     except httpx.HTTPError as error:
@@ -35,5 +37,5 @@ async def call(client: httpx.AsyncClient, institution: Institution, method: str,
 def as_http(error: UpstreamError) -> HTTPException:
     """Pass the service's status and FastAPI-style detail through, tagged with the institution."""
     headers = {"Retry-After": error.retry_after} if error.retry_after else None
-    status = error.status if error.status in {401, 404, 409, 422, 429} else 502
+    status = error.status if error.status in {401, 404, 409, 422, 429, 503} else 502
     return HTTPException(status, {"institution_id": error.institution_id, "detail": error.detail}, headers=headers)

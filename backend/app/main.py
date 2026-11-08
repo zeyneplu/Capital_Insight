@@ -6,6 +6,7 @@ from sqlalchemy import text
 from .config import Settings
 from .database import Base, make_database
 from .security import make_cipher
+from .migrations import upgrade_schema
 from .routers import auth, connections, portfolio, plaid
 from .institutions import build_registry
 from .sessions import SessionStore
@@ -33,6 +34,7 @@ def create_app(settings: Settings | None = None,
         application.state.http = application.state.http_client
         try:
             Base.metadata.create_all(engine)
+            upgrade_schema(engine)
             yield
         finally:
             if http_client is None:

@@ -1,4 +1,5 @@
 import "server-only";
+import { authToken, requireVerifiedUser } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { buildSampleInsights } from "@/lib/finance/insights";
 import { buildDashboard } from "@/lib/finance/portfolio";
@@ -55,12 +56,12 @@ function baseUrl(): string {
   return url.replace(/\/$/, "");
 }
 
-async function request(path: string, init: { method?: string; body?: unknown; sessionId?: string } = {}): Promise<ApiResponse> {
+async function request(path: string, init: { method?: string; body?: unknown; sessionId?: string; token?: string } = {}): Promise<ApiResponse> {
   let response: Response;
   try {
     response = await fetch(baseUrl() + path, {
       method: init.method ?? "GET",
-      headers: { "Content-Type": "application/json", ...(init.sessionId ? { "X-Session-Id": init.sessionId } : {}) },
+      headers: { "Content-Type": "application/json", ...(init.sessionId ? { "X-Session-Id": init.sessionId } : {}), ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}) },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store", // customer-specific: never in a shared cache
     });
@@ -100,9 +101,10 @@ async function readSessionId(): Promise<string | undefined> {
 
 /** Only from Server Actions: creates a backend session when there is none (or it expired). */
 async function ensureSessionId(): Promise<string> {
+  await requireVerifiedUser();
   const existing = await readSessionId();
   if (existing && (await request("/api/v1/institutions", { sessionId: existing })).status === 200) return existing;
-  const { session_id } = expect<{ session_id: string }>(await request("/api/v1/sessions", { method: "POST" }), 201);
+  const { session_id } = expect<{ session_id: string }>(await request("/api/v1/sessions", { method: "POST", token: await authToken() }), 201);
   (await cookies()).set(SESSION_COOKIE, session_id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   return session_id;
 }
@@ -244,15 +246,20 @@ export const httpProvider: DataProvider = {
 
   async getConsentStep(institutionId) {
     const known = (await institutions()).items.find((i) => i.id === institutionId);
-    // Live codes are only in the service's DEMO_MODE logs, so there is no demoCode here.
-    return known ? { step: "email", email: metadata(known).demoEmail } : null;
+    // Live codes are delivered by email or server logs, never returned as a fixture code.
+    if (!known) return null;
+    const user = await requireVerifiedUser();
+    return { step: "email", email: user.email };
   },
 
   async requestCode(institutionId, email) {
     const sessionId = await ensureSessionId();
     const response = await request(`/api/v1/institutions/${encodeURIComponent(institutionId)}/request-code`, { method: "POST", body: { email }, sessionId });
-    if (response.status === 202) return { ok: true, message: String((response.body as { message?: string })?.message ?? "Code requested.") };
-    if (response.status === 404 || response.status === 422 || response.status === 429) {
+    if (response.status === 202) {
+      const result = response.body as { message?: string; delivery?: string };
+      return { ok: true, message: String(result?.message ?? "Code requested."), delivery: result.delivery === "email" ? "email" : "server_log" };
+    }
+    if (response.status === 404 || response.status === 422 || response.status === 429 || response.status === 503) {
       const retry = Number(response.headers.get("Retry-After"));
       return { ok: false, status: response.status, message: detailOf(response.body).message, retryAfterSeconds: Number.isFinite(retry) && retry > 0 ? retry : undefined };
     }

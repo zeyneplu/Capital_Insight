@@ -67,10 +67,17 @@ def services():
 
 
 @pytest.fixture
-def api(services):
+def api(services, tmp_path):
     hosts = {f"{name}_url": f"http://{name}.test" for name in ("chase", "amex", "pnc", "discover", "loans", "mortgages")}
-    with TestClient(create_app(Settings(_env_file=None, **hosts), httpx.MockTransport(services))) as client:
-        client.headers["X-Session-Id"] = client.post("/api/v1/sessions").json()["session_id"]
+    with TestClient(create_app(Settings(_env_file=None, database_url=f"sqlite:///{tmp_path / 'adapter.db'}", **hosts), httpx.MockTransport(services))) as client:
+        from backend.app.models import User
+        from backend.app.database import utcnow
+        from sqlalchemy import select
+        token = client.post("/v1/auth/register", json={"email":"adapter@example.test", "password":"adapter-password"}).json()["access_token"]
+        with client.app.state.session_factory() as database:
+            database.scalar(select(User)).email_verified_at = utcnow()
+            database.commit()
+        client.headers["X-Session-Id"] = client.post("/api/v1/sessions",headers={"Authorization":f"Bearer {token}"}).json()["session_id"]
         yield client
 
 
@@ -156,3 +163,25 @@ def test_transaction_date_order_is_validated(api):
     connect(api, "chase")
     response = api.get("/api/v1/accounts/chase-customer-001-checking/transactions?start_date=2026-10-02&end_date=2026-10-01")
     assert response.status_code == 422
+
+
+def test_connections_restore_for_the_same_verified_user_only(api):
+    from backend.app.models import User, Connection
+    from backend.app.database import utcnow
+    from sqlalchemy import select
+    assert connect(api,"chase").status_code == 200
+    with api.app.state.session_factory() as database:
+        saved=database.scalar(select(Connection))
+        assert saved.customer_profile["id"] == "chase-customer-001"
+        assert "tok-chase" not in saved.encrypted_token
+    token=api.post("/v1/auth/login",json={"email":"adapter@example.test","password":"adapter-password"}).json()["access_token"]
+    api.app.state.sessions._sessions.clear()
+    sid=api.post("/api/v1/sessions",headers={"Authorization":f"Bearer {token}"}).json()["session_id"]
+    restored=api.get("/api/v1/institutions",headers={"X-Session-Id":sid}).json()
+    assert next(item for item in restored if item["id"] == "chase")["connected"]
+    other=api.post("/v1/auth/register",json={"email":"second@example.test","password":"second-password"}).json()["access_token"]
+    with api.app.state.session_factory() as database:
+        database.scalar(select(User).where(User.email == "second@example.test")).email_verified_at=utcnow()
+        database.commit()
+    second_sid=api.post("/api/v1/sessions",headers={"Authorization":f"Bearer {other}"}).json()["session_id"]
+    assert not any(item["connected"] for item in api.get("/api/v1/institutions",headers={"X-Session-Id":second_sid}).json())

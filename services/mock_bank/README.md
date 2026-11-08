@@ -1,6 +1,6 @@
 # Capital Insight mock banking API
 
-A standalone, read-only FastAPI microservice for entirely fictional financial records. The same Python code runs Chase, American Express, PNC, Discover, or a custom bank. This is a mock consent flow, not a real financial institution login. No email is sent and no payments or balance mutations are exposed.
+A standalone, read-only FastAPI microservice for entirely fictional financial records. The same Python code runs Chase, American Express, PNC, Discover, or a custom bank. This is a mock consent flow, not a real financial institution login. Email is optional through SMTP (see ../../EMAIL_SETUP.md); by default email is sent only when SMTP delivery is configured and no payments or balance mutations are exposed.
 
 ## Architecture
 
@@ -157,3 +157,8 @@ Or from this service directory: `python -m pytest tests -q`. Tests use temporary
 ## Future main-backend integration
 
 The main FastAPI backend can keep a registry of bank base URLs, request mock consent for the fictional email, exchange the entered code, and call `/v1/customers/me`, `/v1/accounts`, and paginated transaction endpoints using HTTPX. Store tokens server-side, handle expiry by repeating consent, and key imported account/transaction IDs by institution. Parse decimal strings as Python `Decimal`; retain direction and account type to distinguish debt from assets. Use `total` and offsets to fetch all history. Configure HTTPX timeouts and handle 401/404/422/429 explicitly. This service does not implement the frontend, PostgreSQL aggregator, AI, or NVIDIA integration.
+
+
+## Optional real email codes
+
+See [EMAIL_SETUP.md](../../EMAIL_SETUP.md) for free Gmail SMTP setup. Configure the repository-root private `.env.mail`, then restart this service. SMTP mode sends fictional customers' codes to the configured real demo inbox and suppresses code logging. Default log-only behavior remains available.

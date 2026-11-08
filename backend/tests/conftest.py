@@ -27,6 +27,14 @@ def client(settings):
 def register(client, email):
     response = client.post("/v1/auth/register", json={"email": email, "password": "hackathon-password-2026"})
     assert response.status_code == 201, response.text
+    from backend.app.models import User
+    from backend.app.database import utcnow
+    from sqlalchemy import select
+    with client.app.state.session_factory() as database:
+        for user in database.scalars(select(User)):
+            user.email_verified_at = utcnow()
+        database.commit()
+
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 

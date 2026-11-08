@@ -20,7 +20,7 @@ def test_registration_normalizes_email_and_does_not_return_password(client):
     assert response.status_code == 201
     body = response.json()
     assert body["user"]["email"] == "new.user@example.test"
-    assert set(body["user"]) == {"id", "email", "created_at"}
+    assert set(body["user"]) == {"id", "email", "created_at", "email_verified_at"}
     assert body["token_type"] == "bearer"
     assert body["expires_in"] == client.app.state.settings.session_ttl_seconds
     assert "correct-horse-2026" not in response.text

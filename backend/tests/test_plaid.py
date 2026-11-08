@@ -60,6 +60,13 @@ def plaid_context():
     with TestClient(app) as client:
         registration = client.post("/v1/auth/register", json={"email": "plaid@example.test", "password": "fictional-password"})
         assert registration.status_code == 201
+        from backend.app.models import User
+        from backend.app.database import utcnow
+        from sqlalchemy import select
+        with client.app.state.session_factory() as database:
+            for user in database.scalars(select(User)):
+                user.email_verified_at = utcnow()
+            database.commit()
         headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
         yield app, client, headers, stub
     asyncio.run(upstream.aclose())
@@ -283,6 +290,11 @@ def test_connections_are_scoped_to_owner_for_all_plaid_endpoints(plaid_context):
     app, client, headers, stub = plaid_context
     connection_id = connect(client, headers)
     registration = client.post("/v1/auth/register", json={"email": "other-plaid@example.test", "password": "fictional-password"})
+    from backend.app.models import User
+    from backend.app.database import utcnow
+    with app.state.session_factory() as database:
+        database.scalar(select(User).where(User.email == "other-plaid@example.test")).email_verified_at=utcnow()
+        database.commit()
     other_headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
     for route in ("accounts", "transactions"):
         assert client.get(f"/v1/plaid/connections/{connection_id}/{route}", headers=other_headers).status_code == 404

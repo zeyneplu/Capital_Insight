@@ -40,6 +40,13 @@ def integrated(settings, tmp_path):
         settings.mock_service_urls = {provider: f"http://{provider}" for provider in transports}
         client = stack.enter_context(TestClient(create_app(settings, http_client=upstream)))
         response = client.post("/v1/auth/register", json={"email": "alice@example.test", "password": "hackathon-2026"})
+        from backend.app.models import User
+        from backend.app.database import utcnow
+        from sqlalchemy import select
+        with client.app.state.session_factory() as database:
+            for user in database.scalars(select(User)):
+                user.email_verified_at = utcnow()
+            database.commit()
         headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
         yield client, headers, down
         asyncio.run(upstream.aclose())

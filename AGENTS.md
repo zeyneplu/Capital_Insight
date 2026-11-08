@@ -133,7 +133,7 @@ These are configured ports, not a guarantee that services are running after a pu
 Shared mock authorization:
 
 1. POST `/v1/auth/request-code` with `{ "email": "customer1@loans.example.test" }` (use the selected service's registered demo email).
-2. With DEMO_MODE=true, read the six-digit DEVELOPMENT ONLY code from that service's server logs. No email is sent and ordinary responses never contain the code.
+2. With DEMO_MODE=true, read the six-digit DEVELOPMENT ONLY code from that service's server logs. With AUTH_CODE_DELIVERY=smtp and root .env.mail configured, codes go to a fixed real demo inbox; otherwise DEMO_MODE logs them. Ordinary responses never contain the code. See EMAIL_SETUP.md.
 3. POST `/v1/auth/verify-code` with `{ "email": "...", "code": "123456" }`, using the actual generated code.
 4. Receive `{ "access_token": "...", "token_type": "bearer", "expires_in": 1800 }`.
 5. Send `Authorization: Bearer <access_token>` for protected calls. GET `/v1/customers/me` returns the authenticated fictional customer.
@@ -199,3 +199,14 @@ Do not add a testing framework solely for cosmetic changes. Add focused tests wh
 ## Merged backend interfaces
 
 The frontend's existing `/api/v1` routes and X-Session-Id authentication take priority for frontend integration. They remain compatible with the incoming http-provider and development launcher. The `/v1` application bearer-token routes independently preserve persistent users, encrypted connections, and Plaid support from the core API commit. Both interfaces run in the same app; their sessions and linked connections are separate. See backend/Readme.md for frontend-session setup and backend/CORE_API.md for persistent auth/Plaid. Do not substitute one interface's tokens or response shapes for the other.
+
+
+## Verified email identity (supersedes earlier anonymous-linking guidance)
+
+The current app signs users in at `/sign-in` by emailing their own inbox. Backend `/v1/auth/request-email-code` and `/verify-email-code` create/verify one normalized unique email identity. UUIDs remain foreign keys; no SSNs are used. Financial routes and Plaid require a verified user. Frontend `/api/v1` sessions bind to that user's app session and hydrate persisted mock connections from the same ownership database as `/v1`. Anonymous sessions can browse metadata but cannot connect accounts. Do not restore anonymous linking or the fixed-recipient sign-in behavior.
+
+The Connections page supports Plaid Link; `/banks` shows Plaid accounts for the verified user. Plaid Sandbox uses test data; real bank access requires production configuration. Email alone must never authorize a real bank. Mock consent codes go to the signed-in user's verified address through MOCK_SERVICE_API_KEY-protected forwarding. Read EMAIL_SETUP.md for the current setup and additive schema upgrade.
+
+## Independent institution verification (supersedes recipient forwarding above)
+
+`MOCK_EMAIL_RECIPIENT_MODE=customer` is now the default. Each institution sends consent codes to its own database customer's email and verifies them itself. The core forwards only the institution email, then the returned code; no internal key or recipient override is sent. Institutions reject recipient overrides in customer mode. Configure each deployed service's SMTP credentials and database independently; the root `.env.mail` is only a local convenience. Legacy forwarding requires explicit `forwarded_demo` mode on both ends. See DISTRIBUTED_EMAIL.md and EMAIL_SETUP.md.

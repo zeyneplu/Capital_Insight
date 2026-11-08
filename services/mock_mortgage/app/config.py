@@ -1,10 +1,11 @@
 from datetime import date
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+from .mail import MailSettings, MAIL_ENV_FILE
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+class Settings(MailSettings):
+    model_config = SettingsConfigDict(env_file=(MAIL_ENV_FILE, ".env"), extra="ignore")
     lender_id: str = Field(default="mortgages", pattern=r"^[a-z][a-z0-9_-]*$")
     lender_name: str = "Capital Insight Mock Mortgages"
     database_url: str = "sqlite:///./data/mortgages.db"

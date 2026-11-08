@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import select
-from ..dependencies import SessionDep, UserDep
+from ..dependencies import SessionDep, VerifiedUserDep
 from ..models import Connection
 from ..providers import bank_accounts, projections, mock_call, mock_token, scoped_id, segment
 from ..schemas import AccountCollection, ProjectionCollection, TransactionPage, DashboardOut
@@ -45,7 +45,7 @@ async def collect(request: Request, connections, resource: str):
 
 
 @router.get("/accounts", response_model=AccountCollection, summary="Aggregate your linked bank and Plaid account snapshots")
-async def accounts(request: Request, session: SessionDep, user: UserDep,
+async def accounts(request: Request, session: SessionDep, user: VerifiedUserDep,
                    connection_id: str | None = None, account_type: str | None = None):
     result = await collect(request, user_connections(session, user, {"mock_bank", "plaid"}, connection_id), "accounts")
     if account_type:
@@ -54,19 +54,19 @@ async def accounts(request: Request, session: SessionDep, user: UserDep,
 
 
 @router.get("/loans", response_model=ProjectionCollection, summary="Aggregate approved personal and auto loan projections")
-async def loans(request: Request, session: SessionDep, user: UserDep):
+async def loans(request: Request, session: SessionDep, user: VerifiedUserDep):
     return await collect(request, user_connections(session, user, {"mock_loan"}), "loans")
 
 
 @router.get("/mortgages", response_model=ProjectionCollection, summary="Aggregate approved mortgage projections from linked lenders")
-async def mortgages(request: Request, session: SessionDep, user: UserDep):
+async def mortgages(request: Request, session: SessionDep, user: VerifiedUserDep):
     return await collect(request, user_connections(session, user, {"mock_loan", "mock_mortgage"}), "mortgages")
 
 
 @router.get("/accounts/{account_id}/transactions", response_model=TransactionPage,
              summary="Read a connected mock bank account's transactions",
              description="account_id is the composite id from /v1/accounts. For Plaid use its cached transaction route after syncing.")
-async def transactions(account_id: str, request: Request, session: SessionDep, user: UserDep,
+async def transactions(account_id: str, request: Request, session: SessionDep, user: VerifiedUserDep,
                        limit: Annotated[int, Query(ge=1, le=100)] = 50,
                        offset: Annotated[int, Query(ge=0)] = 0,
                        start_date: date | None = None, end_date: date | None = None,
@@ -96,7 +96,7 @@ async def transactions(account_id: str, request: Request, session: SessionDep, u
 
 @router.get("/dashboard", response_model=DashboardOut,
              summary="Summarize known account snapshots without treating loan projections as live balances")
-async def dashboard(request: Request, session: SessionDep, user: UserDep):
+async def dashboard(request: Request, session: SessionDep, user: VerifiedUserDep):
     connections = user_connections(session, user, {"mock_bank", "plaid"})
     result = await collect(request, connections, "accounts")
     grouped = defaultdict(lambda: {"assets": Decimal("0.00"), "liabilities": Decimal("0.00")})

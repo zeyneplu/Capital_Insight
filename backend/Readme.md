@@ -39,7 +39,7 @@ DATA_SOURCE=http
 BACKEND_API_URL=http://localhost:8000
 ```
 
-Codes are never emailed. Copy the `DEVELOPMENT ONLY` code from the service's terminal log.
+By default, codes are printed in development logs. To receive them by email, configure Gmail SMTP using [EMAIL_SETUP.md](../EMAIL_SETUP.md); the frontend then shows email-delivery instructions.
 
 ## Endpoints (`/api/v1`, all but sessions/offers need `X-Session-Id`)
 
@@ -80,3 +80,15 @@ The same server also exposes the `/v1` API from the core API implementation. It 
 Read [CORE_API.md](CORE_API.md) for `.env` setup, PostgreSQL/Docker configuration, Plaid credentials, and a full walkthrough. You may continue using `python scripts/dev.py` from the repository root for the frontend's anonymous-session experience. The default development database is backend/data/capital_insight.db. No Plaid keys are required for the existing mock frontend.
 
 `X-Session-Id` authorizes `/api/v1`; an application `Authorization: Bearer ...` token authorizes `/v1`. The connection stores are separate. The frontend continues to use `/api/v1` and does not gain Plaid data automatically; its provider must explicitly integrate `/v1` when that feature is added.
+
+
+## Email verification codes
+
+The mock services can now email consent codes through Gmail or another SMTP provider. See [EMAIL_SETUP.md](../EMAIL_SETUP.md). Configure root `.env.mail` and restart the mock services; both core API interfaces preserve delivery metadata and report mail failures.
+
+
+## Personal email sign-in (current flow)
+
+Users now verify their own email at frontend `/sign-in` using `/v1/auth/request-email-code` and `/verify-email-code`. Email is unique; internal UUIDs preserve ownership. Anonymous frontend sessions may browse available institutions but cannot link them. Create `/api/v1/sessions` with a verified app bearer token to bind the frontend session to the persisted user. Mock connections now persist under that same user and restore after sign-in. Password-only unverified sessions cannot access financial connections.
+
+See [EMAIL_SETUP.md](../EMAIL_SETUP.md) for Gmail settings and migration details. `/connect` offers Plaid Link, and `/banks` displays owned Plaid accounts. Mock institution codes are forwarded to the verified user's inbox through the protected internal key, rather than a shared recipient. The earlier anonymous-linking and separate-store descriptions apply only to the older implementation.

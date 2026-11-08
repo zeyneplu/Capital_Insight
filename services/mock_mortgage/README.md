@@ -64,7 +64,7 @@ Invoke-RestMethod "$base/v1/mortgages" -Headers $headers
 Invoke-RestMethod "$base/v1/mortgages/$($application.id)/schedule" -Headers $headers
 ```
 
-Customers 1 through 5 use `customerN@mortgages.example.test`. Codes appear only in server logs with DEMO_MODE=true, never in API responses; no email is sent. Codes expire in five minutes, are single use, allow five attempts, and have a 30-second request cooldown. Successful verification returns a signed, lender-scoped token valid for 30 minutes. In Swagger, paste only `access_token` into Authorize. Missing/invalid/expired tokens return 401. Other borrowers' records return 404. A declined application's schedule returns 409. Validation errors return 422. Each POST creates a separate application.
+Customers 1 through 5 use `customerN@mortgages.example.test`. With default log delivery, codes appear in server logs with DEMO_MODE=true, never in API responses; email is sent only when SMTP delivery is configured. Codes expire in five minutes, are single use, allow five attempts, and have a 30-second request cooldown. Successful verification returns a signed, lender-scoped token valid for 30 minutes. In Swagger, paste only `access_token` into Authorize. Missing/invalid/expired tokens return 401. Other borrowers' records return 404. A declined application's schedule returns 409. Validation errors return 422. Each POST creates a separate application.
 
 ## API endpoints
 
@@ -118,3 +118,8 @@ python -m pytest services/mock_bank/tests services/mock_loan/tests services/mock
 From this service directory: `python -m pytest tests -q`. Tests use temporary SQLite files and no external services. Coverage includes authentication, expiry, attempts, replay, rate limits, ownership, decisions, property validation, amortization, reproducible seeds, restart persistence, and foreign keys.
 
 The main backend can use HTTPX to exchange mock codes, retain the token server-side, and fetch borrower mortgages and schedules. Parse financial strings as Decimal. Keep institution-scoped IDs when importing records into the main application. This service includes no frontend or AI integration.
+
+
+## Optional real email codes
+
+See [EMAIL_SETUP.md](../../EMAIL_SETUP.md) for free Gmail SMTP setup. Configure the repository-root private `.env.mail`, then restart this service. SMTP mode sends fictional customers' codes to the configured real demo inbox and suppresses code logging. Default log-only behavior remains available.

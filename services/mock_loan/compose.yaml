@@ -1,5 +1,8 @@
 services:
   mock-loan:
+    env_file:
+      - path: ../../.env.mail
+        required: false
     build: .
     ports:
       - "8005:8000"

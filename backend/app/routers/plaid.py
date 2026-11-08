@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from ..dependencies import ConnectionDep, SessionDep, UserDep
+from ..dependencies import ConnectionDep, SessionDep, VerifiedUserDep
 from ..models import CachedTransaction, Connection, PlaidState
 from ..plaid import access_token_for, client_for, get_accounts, require_plaid, sync_transactions
 from ..schemas import AccountOut, ConnectionOut, TransactionPage
@@ -58,7 +58,7 @@ def connection_response(connection: Connection) -> dict:
 
 
 @router.post("/link-token", response_model=LinkTokenOut)
-async def create_link_token(request: Request, session: SessionDep, user: UserDep, body: LinkTokenRequest | None = None):
+async def create_link_token(request: Request, session: SessionDep, user: VerifiedUserDep, body: LinkTokenRequest | None = None):
     settings = request.app.state.settings
     payload = {
         "user": {"client_user_id": user.id},
@@ -86,7 +86,7 @@ async def create_link_token(request: Request, session: SessionDep, user: UserDep
 
 
 @router.post("/sandbox/public-token", response_model=PublicTokenOut)
-async def create_sandbox_public_token(body: SandboxTokenRequest, request: Request, user: UserDep):
+async def create_sandbox_public_token(body: SandboxTokenRequest, request: Request, user: VerifiedUserDep):
     settings = request.app.state.settings
     if settings.plaid_environment != "sandbox":
         raise HTTPException(404, detail="Sandbox endpoint is unavailable.")
@@ -101,7 +101,7 @@ async def create_sandbox_public_token(body: SandboxTokenRequest, request: Reques
 
 
 @router.post("/exchange-public-token", status_code=201, response_model=ConnectionOut)
-async def exchange_public_token(body: PublicTokenRequest, request: Request, session: SessionDep, user: UserDep):
+async def exchange_public_token(body: PublicTokenRequest, request: Request, session: SessionDep, user: VerifiedUserDep):
     result = await client_for(request).call("/item/public_token/exchange", {"public_token": body.public_token})
     if not isinstance(result.get("access_token"), str) or not isinstance(result.get("item_id"), str):
         raise HTTPException(502, detail="Invalid Plaid exchange response.")

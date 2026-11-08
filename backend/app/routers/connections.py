@@ -3,7 +3,8 @@ from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select, delete
 from sqlalchemy.exc import IntegrityError
 from ..database import utcnow
-from ..dependencies import SessionDep, UserDep, ConnectionDep
+from ..identity import recipient_payload
+from ..dependencies import SessionDep, VerifiedUserDep, ConnectionDep
 from ..models import Connection, CachedTransaction, PlaidState
 from ..providers import PROVIDERS, mock_call, mock_token, segment
 from ..schemas import ConnectionOut, CodeRequest, VerifyRequest, ProviderOut, Message
@@ -20,19 +21,20 @@ def providers(request: Request):
 
 
 @router.get("/connections", response_model=list[ConnectionOut], summary="List your linked institutions")
-def connections(session: SessionDep, user: UserDep):
+def connections(session: SessionDep, user: VerifiedUserDep):
     return session.scalars(select(Connection).where(Connection.user_id == user.id).order_by(Connection.created_at)).all()
 
 
 @router.post("/connections/{provider}/request-code", response_model=Message, status_code=202,
              summary="Ask a mock institution to issue a consent code")
-async def request_code(provider: str, body: CodeRequest, request: Request, user: UserDep):
-    return await mock_call(request, provider, "/v1/auth/request-code", method="POST", body=body.model_dump())
+async def request_code(provider: str, body: CodeRequest, request: Request, user: VerifiedUserDep):
+    payload, key = recipient_payload(request.app.state.settings, user, {"email":body.email})
+    return await mock_call(request, provider, "/v1/auth/request-code", method="POST", body=payload, internal_key=key)
 
 
 @router.post("/connections/{provider}/verify-code", response_model=ConnectionOut,
              summary="Verify mock consent and save encrypted institution credentials")
-async def verify_code(provider: str, body: VerifyRequest, request: Request, session: SessionDep, user: UserDep):
+async def verify_code(provider: str, body: VerifyRequest, request: Request, session: SessionDep, user: VerifiedUserDep):
     token = await mock_call(request, provider, "/v1/auth/verify-code", method="POST", body=body.model_dump())
     customer = await mock_call(request, provider, "/v1/customers/me", token=token["access_token"])
     connection = session.scalar(select(Connection).where(Connection.user_id == user.id,
@@ -41,6 +43,7 @@ async def verify_code(provider: str, body: VerifyRequest, request: Request, sess
         connection = Connection(user_id=user.id, provider=provider, kind=PROVIDERS[provider][1],
             remote_id=customer["id"], display_name=PROVIDERS[provider][0])
         session.add(connection)
+    connection.customer_profile = customer
     connection.encrypted_token = request.app.state.cipher.encrypt(token["access_token"].encode()).decode()
     connection.expires_at = utcnow()+timedelta(seconds=int(token["expires_in"]))
     try:

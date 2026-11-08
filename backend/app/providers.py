@@ -36,12 +36,14 @@ def mock_token(request: Request, connection) -> str:
         raise HTTPException(409, "Connection credentials unavailable; reconnect")
 
 
-async def mock_call(request: Request, provider: str, path: str, *, method="GET", token=None, body=None, params=None):
+async def mock_call(request: Request, provider: str, path: str, *, method="GET", token=None, body=None, params=None, internal_key=None):
     settings = request.app.state.settings
     if provider not in PROVIDERS or provider not in settings.mock_service_urls:
         raise HTTPException(404, "Provider not configured")
     url = settings.mock_service_urls[provider].rstrip("/") + path
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    if internal_key:
+        headers["X-Internal-Key"] = internal_key
     try:
         response = await request.app.state.http_client.request(method, url, headers=headers, json=body, params=params)
     except httpx.RequestError:
@@ -49,7 +51,7 @@ async def mock_call(request: Request, provider: str, path: str, *, method="GET",
     if response.status_code >= 400:
         if response.status_code == 401 and token:
             raise HTTPException(409, "Connection expired or invalid; reconnect")
-        status = response.status_code if response.status_code in {401, 404, 409, 422, 429} else 502
+        status = response.status_code if response.status_code in {401, 404, 409, 422, 429, 503} else 502
         retry = {"Retry-After": response.headers.get("Retry-After", "30")} if status == 429 else None
         raise HTTPException(status, {"message": "Mock service rejected the request", "provider": provider}, headers=retry)
     try:

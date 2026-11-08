@@ -85,6 +85,7 @@ class TransactionPage(BaseModel):
 
 
 class EmailRequest(BaseModel):
+    delivery_email: str | None = Field(default=None, max_length=254, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
     email: str = Field(max_length=254, examples=["customer1@chase.example.test"])
 
     @field_validator("email")
@@ -102,6 +103,7 @@ class VerifyRequest(EmailRequest):
 
 class Message(BaseModel):
     message: str
+    delivery: Literal["email", "server_log"] = "server_log"
 
 
 class TokenOut(BaseModel):

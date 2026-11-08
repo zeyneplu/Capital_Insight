@@ -124,3 +124,4 @@ class DashboardOut(BaseModel):
 
 class Message(BaseModel):
     message: str
+    delivery: Literal["email", "server_log"] | None = None

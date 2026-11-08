@@ -6,6 +6,8 @@ from fastapi import Depends, Header, HTTPException, Request
 from .institutions import Institution
 from .sessions import Session, SessionStore
 from .upstream import UpstreamError, call
+from .dependencies import SessionDep as DatabaseDep
+from .identity import restore_connections
 
 
 def store(request: Request) -> SessionStore:
@@ -22,11 +24,14 @@ def registry(request: Request) -> dict[str, Institution]:
 
 def current_session(
     request: Request,
+    database: DatabaseDep,
     x_session_id: Annotated[str | None, Header(max_length=128)] = None,
 ) -> Session:
     session = store(request).get(x_session_id) if x_session_id else None
     if session is None:
         raise HTTPException(401, "Missing or expired session. Create one with POST /api/v1/sessions.")
+    if session.user_id:
+        restore_connections(session, database, request.app.state.cipher)
     return session
 
 
@@ -52,4 +57,5 @@ async def authed_call(http: httpx.AsyncClient, session: Session, institution: In
     except UpstreamError as error:
         if error.status == 401:
             session.connections.pop(institution.id, None)
+            session.revoked.add(institution.id)
         raise

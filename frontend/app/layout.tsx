@@ -1,3 +1,4 @@
+import { AccountStatus } from "@/components/auth/account-status";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <DemoBadge />
               </span>
             </div>
+            <Suspense fallback={null}><AccountStatus /></Suspense>
             <MobileMenu />
           </div>
         </header>

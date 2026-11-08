@@ -39,8 +39,8 @@ export type SubmitResult<T> =
   | { ok: false; status: 401 | 422; errors: FieldError[] };
 
 export type RequestCodeResult =
-  | { ok: true; message: string }
-  | { ok: false; status: 404 | 422 | 429; message: string; retryAfterSeconds?: number };
+  | { ok: true; message: string; delivery?: "email" | "server_log" }
+  | { ok: false; status: 404 | 422 | 429 | 503; message: string; retryAfterSeconds?: number };
 
 export type VerifyCodeResult = { ok: true; institution: ConnectableInstitution } | { ok: false; status: 401 | 404 | 422; message: string };
 

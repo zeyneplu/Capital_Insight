@@ -49,6 +49,8 @@ UserDep = Annotated[User, Depends(current_user)]
 
 
 def owned_connection(connection_id: str, session: SessionDep, user: UserDep) -> Connection:
+    if user.email_verified_at is None:
+        raise HTTPException(403, "Verify your email before accessing financial connections")
     connection = session.scalar(
         select(Connection).where(Connection.id == connection_id, Connection.user_id == user.id)
     )
@@ -58,3 +60,12 @@ def owned_connection(connection_id: str, session: SessionDep, user: UserDep) -> 
 
 
 ConnectionDep = Annotated[Connection, Depends(owned_connection)]
+
+
+def verified_user(user: UserDep) -> User:
+    if user.email_verified_at is None:
+        raise HTTPException(403, "Verify your own email before connecting financial accounts")
+    return user
+
+
+VerifiedUserDep = Annotated[User, Depends(verified_user)]

@@ -1,5 +1,8 @@
 services:
   chase:
+    env_file:
+      - path: ../../.env.mail
+        required: false
     build: .
     ports:
     - 8001:8000
@@ -13,6 +16,9 @@ services:
     - chase_data:/service/data
     restart: unless-stopped
   amex:
+    env_file:
+      - path: ../../.env.mail
+        required: false
     build: .
     ports:
     - 8002:8000
@@ -26,6 +32,9 @@ services:
     - amex_data:/service/data
     restart: unless-stopped
   pnc:
+    env_file:
+      - path: ../../.env.mail
+        required: false
     build: .
     ports:
     - 8003:8000
@@ -39,6 +48,9 @@ services:
     - pnc_data:/service/data
     restart: unless-stopped
   discover:
+    env_file:
+      - path: ../../.env.mail
+        required: false
     build: .
     ports:
     - 8004:8000

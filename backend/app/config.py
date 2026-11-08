@@ -4,15 +4,16 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+from .mailer import MailSettings, MAIL_ENV_FILE
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
-class Settings(BaseSettings):
+class Settings(MailSettings):
     model_config = SettingsConfigDict(
-        env_file=BACKEND_ROOT / ".env",
+        env_file=(MAIL_ENV_FILE, BACKEND_ROOT / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
